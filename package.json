@@ -1,0 +1,12 @@
+{
+  "name": "team-workboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lightweight LAN team workboard",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "test:smoke": "node scripts/smoke-test.mjs"
+  }
+}

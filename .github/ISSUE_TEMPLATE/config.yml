@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Usage Discussion
+    url: https://github.com/st-team-repos
+    about: 如果只是想讨论方向或确认需求，可以先在组织内统一沟通后再提 issue。

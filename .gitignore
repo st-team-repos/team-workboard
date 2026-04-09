@@ -1,0 +1,11 @@
+node_modules/
+.DS_Store
+npm-debug.log*
+
+.chrome-profile/
+.gstack/
+
+server.out.log
+server.err.log
+
+data/store.json

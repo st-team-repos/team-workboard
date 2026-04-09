@@ -1,0 +1,2477 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Workboard Prototype</title>
+  <style>
+    :root {
+      --bg: #f4efe6;
+      --bg-deep: #e7decf;
+      --panel: rgba(255, 251, 244, 0.82);
+      --panel-strong: #fff9ef;
+      --ink: #1f2a24;
+      --muted: #5c655d;
+      --line: rgba(31, 42, 36, 0.14);
+      --brand: #226b5a;
+      --brand-soft: #d7efe8;
+      --warning: #e0a22f;
+      --warning-soft: #f9ebc6;
+      --danger: #b74d3f;
+      --danger-soft: #f8ddd7;
+      --done: #3d7a46;
+      --done-soft: #dcefd9;
+      --shadow: 0 16px 40px rgba(53, 45, 28, 0.12);
+      --radius-xl: 26px;
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      --radius-sm: 10px;
+      --font-ui: "Aptos", "Segoe UI Variable", "Microsoft YaHei UI", "PingFang SC", sans-serif;
+      --font-display: "Georgia", "Times New Roman", serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font-ui);
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(255, 241, 211, 0.9), transparent 32%),
+        radial-gradient(circle at 85% 12%, rgba(185, 223, 211, 0.8), transparent 22%),
+        linear-gradient(135deg, #f6f1e9 0%, #efe4d4 48%, #e6ded1 100%);
+      letter-spacing: 0.01em;
+    }
+
+    .shell {
+      width: min(1440px, calc(100% - 32px));
+      margin: 20px auto;
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 18px;
+    }
+
+    .sidebar,
+    .panel,
+    .hero {
+      background: var(--panel);
+      backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      box-shadow: var(--shadow);
+    }
+
+    .sidebar {
+      border-radius: var(--radius-xl);
+      padding: 22px;
+      position: static;
+      align-self: start;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .brandmark {
+      display: grid;
+      gap: 10px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brandmark span {
+      width: 46px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #1f6f5f 0%, #84a96f 100%);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .brandmark h1 {
+      margin: 0;
+      font-size: 1.35rem;
+      line-height: 1.1;
+      font-family: var(--font-display);
+      font-weight: 700;
+    }
+
+    .brandmark p,
+    .member-meta,
+    .subtle,
+    .mini-note,
+    .timeline-meta,
+    .archive-meta,
+    .chip-muted {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .nav {
+      display: grid;
+      gap: 8px;
+    }
+
+    .nav button {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      padding: 14px 16px;
+      border-radius: 16px;
+      text-align: left;
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+      transition: transform 160ms ease, background 160ms ease, color 160ms ease;
+    }
+
+    .nav button:hover,
+    .nav button[aria-selected="true"] {
+      background: rgba(34, 107, 90, 0.11);
+      color: #123c33;
+      transform: translateX(2px);
+    }
+
+    .operator {
+      margin-top: auto;
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+      display: grid;
+      gap: 10px;
+    }
+
+    .select-wrap {
+      display: grid;
+      gap: 8px;
+    }
+
+    select,
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 11px 12px;
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--ink);
+      font: inherit;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 14px;
+      font: inherit;
+      cursor: pointer;
+      transition: transform 160ms ease, opacity 160ms ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: var(--brand);
+      color: #fff;
+    }
+
+    .btn-soft {
+      background: rgba(34, 107, 90, 0.09);
+      color: #18463b;
+    }
+
+    .main {
+      display: grid;
+      gap: 18px;
+      align-content: start;
+    }
+
+    .hero {
+      border-radius: 34px;
+      padding: 28px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(300px, 0.9fr);
+      gap: 18px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -70px -80px auto;
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(34, 107, 90, 0.18), transparent 66%);
+      pointer-events: none;
+    }
+
+    .hero h2 {
+      margin: 0 0 10px;
+      font-size: clamp(1.9rem, 3vw, 2.9rem);
+      line-height: 0.98;
+      font-family: var(--font-display);
+      font-weight: 700;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 56ch;
+      color: #35413a;
+      line-height: 1.65;
+    }
+
+    .hero-actions,
+    .hero-pulses,
+    .cards-grid,
+    .two-up,
+    .member-grid,
+    .detail-layout,
+    .archive-layout,
+    .filters,
+    .action-row,
+    .quick-box,
+    .status-pills,
+    .simple-rules {
+      display: grid;
+      gap: 14px;
+    }
+
+    .hero-actions {
+      grid-template-columns: repeat(2, minmax(0, max-content));
+      margin-top: 18px;
+    }
+
+    .hero-pulses {
+      align-content: start;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .pulse {
+      padding: 18px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.66);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+    }
+
+    .pulse strong {
+      display: block;
+      font-size: 2rem;
+      line-height: 1;
+      margin-bottom: 8px;
+      font-family: var(--font-display);
+    }
+
+    .cards-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .panel {
+      border-radius: var(--radius-xl);
+      padding: 20px;
+    }
+
+    .metric {
+      display: grid;
+      gap: 8px;
+    }
+
+    .metric strong {
+      font-size: 2.2rem;
+      line-height: 1;
+      font-family: var(--font-display);
+    }
+
+    .metric .delta {
+      font-size: 0.92rem;
+      color: #204f44;
+    }
+
+    .section-title {
+      margin: 0 0 4px;
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .section-copy {
+      margin: 0 0 16px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .two-up {
+      grid-template-columns: 1.12fr 0.88fr;
+    }
+
+    .list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .list-item {
+      display: grid;
+      gap: 10px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+    }
+
+    .row,
+    .item-head,
+    .timeline-row,
+    .archive-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .title {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .chips,
+    .member-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 0.86rem;
+      background: rgba(34, 107, 90, 0.1);
+      color: #1e5548;
+    }
+
+    .chip.blocked {
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    .chip.warning {
+      background: var(--warning-soft);
+      color: #8e6100;
+    }
+
+    .chip.done {
+      background: var(--done-soft);
+      color: var(--done);
+    }
+
+    .chip.tomorrow {
+      background: var(--brand-soft);
+      color: var(--brand);
+    }
+
+    .chip.upcoming {
+      background: rgba(31, 42, 36, 0.08);
+      color: #45534b;
+    }
+
+    .form-hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .preset-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .preset-btn {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.9);
+      color: #18463b;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font: inherit;
+      cursor: pointer;
+      transition: transform 160ms ease, background 160ms ease;
+    }
+
+    .preset-btn:hover {
+      transform: translateY(-1px);
+      background: rgba(34, 107, 90, 0.09);
+    }
+
+    .quick-box {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid var(--line);
+    }
+
+    .status-pills {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .pill-btn {
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.86);
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 10px 12px;
+      font: inherit;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .pill-btn.active {
+      background: rgba(34, 107, 90, 0.12);
+      color: #17463b;
+      border-color: rgba(34, 107, 90, 0.2);
+    }
+
+    .simple-rules {
+      margin-top: 18px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .simple-rule {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.68);
+      border: 1px solid rgba(255, 255, 255, 0.82);
+    }
+
+    .simple-rule strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 12px;
+    }
+
+    .timeline-row {
+      align-items: start;
+      padding: 14px 0;
+      border-bottom: 1px dashed var(--line);
+    }
+
+    .timeline-row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .timeline-badge {
+      min-width: 112px;
+      border-radius: 999px;
+      padding: 7px 10px;
+      text-align: center;
+      font-size: 0.82rem;
+      background: rgba(31, 42, 36, 0.08);
+    }
+
+    .member-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .member-card {
+      padding: 18px;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid var(--line);
+      display: grid;
+      gap: 14px;
+    }
+
+    .member-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 700;
+      background: linear-gradient(135deg, #225f71 0%, #5d8b68 100%);
+    }
+
+    .progressbar {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(31, 42, 36, 0.08);
+      overflow: hidden;
+    }
+
+    .progressbar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #1e6354 0%, #84a96f 100%);
+    }
+
+    .detail-layout {
+      grid-template-columns: 1.15fr 0.85fr;
+    }
+
+    .detail-block {
+      padding: 18px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid var(--line);
+    }
+
+    .archive-layout {
+      grid-template-columns: 280px minmax(0, 1fr);
+    }
+
+    .filters {
+      align-content: start;
+    }
+
+    .filter-box {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid var(--line);
+      display: grid;
+      gap: 12px;
+    }
+
+    .archive-table {
+      display: grid;
+      gap: 10px;
+    }
+
+    .archive-row {
+      padding: 15px 16px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid var(--line);
+      align-items: start;
+    }
+
+    .view {
+      display: none;
+      animation: rise 220ms ease;
+    }
+
+    .view.active {
+      display: grid;
+      gap: 18px;
+    }
+
+    .click-card {
+      cursor: pointer;
+      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .click-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(34, 107, 90, 0.24);
+      box-shadow: 0 16px 26px rgba(25, 51, 42, 0.08);
+    }
+
+    .select-inline,
+    .stack,
+    .field-grid,
+    .modal-actions {
+      display: grid;
+      gap: 12px;
+    }
+
+    .select-inline {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+    }
+
+    .field-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .empty-state {
+      padding: 22px;
+      border-radius: 20px;
+      border: 1px dashed var(--line);
+      background: rgba(255, 255, 255, 0.58);
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .muted-strong {
+      color: #2b4238;
+      font-weight: 600;
+    }
+
+    .link-button {
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .link-button:hover {
+      color: #18463b;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(28, 23, 14, 0.3);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 20;
+    }
+
+    .modal-backdrop.active {
+      display: flex;
+    }
+
+    .modal {
+      width: min(760px, 100%);
+      max-height: min(90vh, 920px);
+      overflow: auto;
+      background: #fffaf1;
+      border-radius: 28px;
+      padding: 24px;
+      box-shadow: 0 32px 80px rgba(34, 28, 18, 0.24);
+      border: 1px solid rgba(255, 255, 255, 0.9);
+    }
+
+    .modal textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+
+    .modal-actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin-top: 8px;
+    }
+
+    .advanced-box {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid var(--line);
+    }
+
+    .advanced-box summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: #173e35;
+    }
+
+    .advanced-box[open] summary {
+      margin-bottom: 12px;
+    }
+
+    .collab-panel.is-hidden {
+      display: none;
+    }
+
+    .toast {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(24, 70, 59, 0.95);
+      color: #fff;
+      box-shadow: 0 18px 42px rgba(18, 28, 24, 0.24);
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: opacity 180ms ease, transform 180ms ease;
+      z-index: 30;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 1180px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+        align-self: stretch;
+      }
+
+      .hero,
+      .cards-grid,
+      .two-up,
+      .member-grid,
+      .detail-layout,
+      .archive-layout,
+      .status-pills,
+      .simple-rules {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .shell {
+        width: min(100% - 20px, 100%);
+        margin: 10px auto 24px;
+      }
+
+      .sidebar,
+      .panel,
+      .hero {
+        border-radius: 24px;
+      }
+
+      .hero {
+        padding: 22px;
+      }
+
+      .hero-actions,
+      .hero-pulses,
+      .field-grid,
+      .modal-actions,
+      .select-inline {
+        grid-template-columns: 1fr;
+      }
+
+      .row,
+      .item-head,
+      .timeline-row,
+      .archive-row,
+      .member-top {
+        flex-direction: column;
+        align-items: start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brandmark">
+        <span>TW</span>
+        <h1>Team Workboard</h1>
+        <p>局域网内的团队代办透明板。轻量，但每次推进都有迹可循。</p>
+      </div>
+
+      <div class="nav" role="tablist" aria-label="Prototype views">
+        <button type="button" class="nav-btn" data-view="overview" aria-selected="true">今日总览</button>
+        <button type="button" class="nav-btn" data-view="people" aria-selected="false">成员看板</button>
+        <button type="button" class="nav-btn" data-view="member-admin" aria-selected="false">成员管理</button>
+        <button type="button" class="nav-btn" data-view="detail" aria-selected="false">事项详情</button>
+        <button type="button" class="nav-btn" data-view="archive" aria-selected="false">归档检索</button>
+      </div>
+
+      <div class="operator">
+        <strong>快速更新</strong>
+        <p class="mini-note">先选一次更新人，再用一句话推进。浏览器默认记住上次选择，减少重复操作。</p>
+        <div class="select-wrap">
+          <label class="subtle" for="actor">成员选择</label>
+          <select id="actor">
+            <option>陈阳 / 产品推进</option>
+            <option>林青 / 前端实现</option>
+            <option>周岚 / 后端与部署</option>
+            <option>赵可 / 测试与归档</option>
+          </select>
+        </div>
+        <div class="select-wrap">
+          <label class="subtle" for="quick-item">更新哪个事项</label>
+          <select id="quick-item">
+            <option>事项详情页的事件时间线展示</option>
+            <option>完成 SQLite 数据备份脚本接入</option>
+            <option>整理 v1 事项模板</option>
+          </select>
+        </div>
+        <div class="select-wrap">
+          <label class="subtle" for="quick-note">一句话进展</label>
+          <input id="quick-note" type="text" value="补完空状态和并发提示">
+        </div>
+        <div class="status-pills">
+          <button class="pill-btn active" type="button" data-status="in_progress">进行中</button>
+          <button class="pill-btn" type="button" data-status="blocked">阻塞</button>
+          <button class="pill-btn" type="button" data-status="review">待评审</button>
+          <button class="pill-btn" type="button" data-status="done">已完成</button>
+        </div>
+        <button id="save-update" class="btn btn-primary" type="button">保存这次更新</button>
+        <button id="open-create" class="btn btn-soft" type="button" data-open-create="true">新建事项</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="hero">
+        <div>
+          <p class="chip chip-muted">Prototype draft / 无登录版本</p>
+          <h2>让团队现在在忙什么，<br>不用再靠问。</h2>
+          <p>
+            这个原型故意把重点压在四件事上：当前状态、多人协作、最近更新、完成回溯。
+            不是项目管理平台。更像一块大家都愿意持续更新的工作透明板。
+          </p>
+          <div class="hero-actions">
+            <button id="go-overview" class="btn btn-primary" type="button">进入今日总览</button>
+            <button class="btn btn-soft" type="button" data-open-create="true">新建事项</button>
+            <button id="go-detail" class="btn btn-soft" type="button">查看事项模板</button>
+          </div>
+          <div class="simple-rules">
+            <div class="simple-rule">
+              <strong>先选人</strong>
+              <p class="subtle">只做一次。后面默认沿用，不强迫反复确认。</p>
+            </div>
+            <div class="simple-rule">
+              <strong>一句话更新</strong>
+              <p class="subtle">不写周报式长文，只写现在完成到哪一步。</p>
+            </div>
+            <div class="simple-rule">
+              <strong>一键改状态</strong>
+              <p class="subtle">把常用动作压成状态切换，不让成员进深层表单。</p>
+            </div>
+          </div>
+        </div>
+        <div id="hero-pulses" class="hero-pulses">
+          <div class="pulse">
+            <strong>12</strong>
+            <p>当前活跃事项</p>
+          </div>
+          <div class="pulse">
+            <strong>3</strong>
+            <p>多人协作事项</p>
+          </div>
+          <div class="pulse">
+            <strong>2</strong>
+            <p>即将到期</p>
+          </div>
+          <div class="pulse">
+            <strong>15s</strong>
+            <p>默认刷新周期</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="overview" class="view active">
+        <div class="cards-grid">
+          <article class="panel metric">
+            <span class="subtle">活跃事项</span>
+            <strong>12</strong>
+            <span class="delta">较昨天 +2，团队节奏偏快</span>
+          </article>
+          <article class="panel metric">
+            <span class="subtle">即将到期</span>
+            <strong>2</strong>
+            <span class="delta">今天 18:00 前需要收口</span>
+          </article>
+          <article class="panel metric">
+            <span class="subtle">阻塞事项</span>
+            <strong>1</strong>
+            <span class="delta">卡在部署环境准备</span>
+          </article>
+          <article class="panel metric">
+            <span class="subtle">今日完成</span>
+            <strong>4</strong>
+            <span class="delta">归档页可直接回看完成总结</span>
+          </article>
+        </div>
+
+        <div class="two-up">
+          <article class="panel">
+            <h3 class="section-title">需要马上关注</h3>
+            <p class="section-copy">优先把快到点和已经卡住的事项拎出来，不让它们淹没在任务海里。</p>
+            <div class="list">
+              <div class="list-item">
+                <div class="item-head">
+                  <div class="title">完善事项详情页的事件时间线展示</div>
+                  <span class="chip warning">今天 17:30</span>
+                </div>
+                <div class="chips">
+                  <span class="chip">主负责人 林青</span>
+                  <span class="chip">协作 周岚</span>
+                  <span class="chip">状态 in_progress</span>
+                </div>
+                <p class="subtle">当前进展：时间线 UI 已完成 70%，还差“负责人变更”和“归档事件”样式。</p>
+                <div class="chips">
+                  <span class="chip">一句话更新</span>
+                  <span class="chip">改状态</span>
+                </div>
+              </div>
+              <div class="list-item">
+                <div class="item-head">
+                  <div class="title">完成 SQLite 数据备份脚本接入</div>
+                  <span class="chip blocked">blocked</span>
+                </div>
+                <div class="chips">
+                  <span class="chip">主负责人 周岚</span>
+                  <span class="chip">状态 blocked</span>
+                </div>
+                <p class="subtle">阻塞原因：局域网部署机目录权限还没确认。下一步：确认容器卷挂载路径。</p>
+                <div class="chips">
+                  <span class="chip blocked">解除阻塞后继续</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel">
+            <h3 class="section-title">最近更新流</h3>
+            <p class="section-copy">这是无登录版本里最重要的信任补丁。更新动作虽然轻，但记录不能轻。</p>
+            <div class="timeline">
+              <div class="timeline-row">
+                <span class="timeline-badge">10:42</span>
+                <div>
+                  <div class="title">林青 更新了 “成员看板布局”</div>
+                  <p class="timeline-meta">从 `planned` 改为 `in_progress`，并补充“移动端切单栏”的说明。</p>
+                </div>
+              </div>
+              <div class="timeline-row">
+                <span class="timeline-badge">10:15</span>
+                <div>
+                  <div class="title">陈阳 创建了 “整理 v1 事项模板”</div>
+                  <p class="timeline-meta">完成标准已填写，目标时间设为今天 16:00。</p>
+                </div>
+              </div>
+              <div class="timeline-row">
+                <span class="timeline-badge">09:58</span>
+                <div>
+                  <div class="title">赵可 完成了 “归档检索规则梳理”</div>
+                  <p class="timeline-meta">已写完成总结，并自动进入归档。</p>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="people" class="view">
+        <article class="panel">
+          <h3 class="section-title">成员看板</h3>
+          <p class="section-copy">默认按成员展开，回答一个最直接的问题：每个人现在手上在推进什么。</p>
+          <div class="member-grid">
+            <div class="member-card">
+              <div class="member-top">
+                <div class="row">
+                  <div class="avatar">陈</div>
+                  <div>
+                    <div class="title">陈阳</div>
+                    <p class="member-meta">产品推进 / 模板与流程</p>
+                  </div>
+                </div>
+                <span class="chip">2 项进行中</span>
+              </div>
+              <div>
+                <div class="title">整理 v1 事项模板</div>
+                <p class="subtle">目标时间：今天 16:00</p>
+              </div>
+              <div class="progressbar"><span style="width: 80%"></span></div>
+              <div class="member-tags">
+                <span class="chip">进展 80%</span>
+                <span class="chip">下一步：补多人事项示例</span>
+              </div>
+            </div>
+
+            <div class="member-card">
+              <div class="member-top">
+                <div class="row">
+                  <div class="avatar">林</div>
+                  <div>
+                    <div class="title">林青</div>
+                    <p class="member-meta">前端实现 / 界面原型</p>
+                  </div>
+                </div>
+                <span class="chip warning">今天到期</span>
+              </div>
+              <div>
+                <div class="title">事项详情页的事件时间线展示</div>
+                <p class="subtle">主负责，周岚协作</p>
+              </div>
+              <div class="progressbar"><span style="width: 70%"></span></div>
+              <div class="member-tags">
+                <span class="chip">最新更新：补交互态</span>
+                <span class="chip">协作中事项 1</span>
+              </div>
+            </div>
+
+            <div class="member-card">
+              <div class="member-top">
+                <div class="row">
+                  <div class="avatar">周</div>
+                  <div>
+                    <div class="title">周岚</div>
+                    <p class="member-meta">后端与部署</p>
+                  </div>
+                </div>
+                <span class="chip blocked">1 项阻塞</span>
+              </div>
+              <div>
+                <div class="title">完成 SQLite 数据备份脚本接入</div>
+                <p class="subtle">阻塞在部署目录权限确认</p>
+              </div>
+              <div class="progressbar"><span style="width: 42%"></span></div>
+              <div class="member-tags">
+                <span class="chip blocked">blocked</span>
+                <span class="chip">下一步：确认容器卷路径</span>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section id="member-admin" class="view">
+        <article class="panel">
+          <h3 class="section-title">成员管理</h3>
+        </article>
+      </section>
+
+      <section id="detail" class="view">
+        <div class="detail-layout">
+          <article class="panel">
+            <h3 class="section-title">事项详情页</h3>
+            <p class="section-copy">详情页保留完整信息，但最常用的动作压成上方的快速更新区，不让成员每次都填大表单。</p>
+
+            <div class="quick-box">
+              <div class="title">最少操作版更新</div>
+              <p class="section-copy" style="margin-bottom: 0;">选更新人，写一句话，点一个状态，然后保存。就这 3 步。</p>
+            </div>
+
+            <div class="detail-block">
+              <div class="row">
+                <div>
+                  <div class="title">完善事项详情页的事件时间线展示</div>
+                  <p class="subtle">目标：让团队能看清一个事项是怎么一步步推进到现在的。</p>
+                </div>
+                <span class="chip">in_progress</span>
+              </div>
+            </div>
+
+            <div class="detail-block">
+              <div class="chips">
+                <span class="chip">主负责人 林青</span>
+                <span class="chip">协作 周岚</span>
+                <span class="chip">目标时间 今天 17:30</span>
+                <span class="chip">更新人 林青</span>
+              </div>
+            </div>
+
+            <div class="detail-block">
+              <div class="title">完成标准</div>
+              <p class="subtle">时间线要覆盖创建、状态变更、负责人变更、进度更新、完成、归档，并在移动端可读。</p>
+            </div>
+
+            <div class="detail-block">
+              <div class="title">当前进展</div>
+              <p class="subtle">时间线主体样式和事件分层已完成，剩余边界状态和空列表引导。</p>
+            </div>
+
+            <div class="detail-block">
+              <div class="title">下一步</div>
+              <p class="subtle">补“刚刚被其他人更新”的并发提示，以及“无事件时”的空状态文案。</p>
+            </div>
+
+            <div class="detail-block">
+              <div class="title">常用动作</div>
+              <div class="chips" style="margin-top: 12px;">
+                <span class="chip">一句话更新</span>
+                <span class="chip">改状态</span>
+                <span class="chip">补目标时间</span>
+                <span class="chip">标记完成</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel">
+            <h3 class="section-title">事件时间线</h3>
+            <p class="section-copy">无登录版本仍然要可信，靠的是每次操作都保留上下文。</p>
+            <div class="timeline">
+              <div class="timeline-row">
+                <span class="timeline-badge">created</span>
+                <div>
+                  <div class="title">陈阳 创建事项</div>
+                  <p class="timeline-meta">10:15，目标时间设为今天 17:30。</p>
+                </div>
+              </div>
+              <div class="timeline-row">
+                <span class="timeline-badge">owner_changed</span>
+                <div>
+                  <div class="title">主负责人改为林青</div>
+                  <p class="timeline-meta">10:18，周岚加入协作成员。</p>
+                </div>
+              </div>
+              <div class="timeline-row">
+                <span class="timeline-badge">progress</span>
+                <div>
+                  <div class="title">林青 更新进展到 70%</div>
+                  <p class="timeline-meta">10:42，补充“剩余边界态”说明。</p>
+                </div>
+              </div>
+            </div>
+            <div class="action-row" style="margin-top: 16px;">
+              <button class="btn btn-primary" type="button">保存一句话更新</button>
+              <button class="btn btn-soft" type="button">只改状态</button>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="archive" class="view">
+        <div class="archive-layout">
+          <aside class="panel filters">
+            <div>
+              <h3 class="section-title">归档检索</h3>
+              <p class="section-copy">检索也尽量轻。先用默认时间范围和关键词，只有真的需要时再加筛选。</p>
+            </div>
+            <div class="filter-box">
+              <label class="subtle" for="range">时间范围</label>
+              <select id="range">
+                <option>最近 7 天</option>
+                <option>最近 30 天</option>
+                <option>本季度</option>
+              </select>
+            </div>
+            <div class="filter-box">
+              <label class="subtle" for="keyword">关键词</label>
+              <input id="keyword" type="text" value="" placeholder="输入标题或总结关键词">
+            </div>
+            <div class="chips">
+              <span class="chip">全部成员</span>
+              <span class="chip">默认按最近更新排序</span>
+            </div>
+          </aside>
+
+          <article class="panel">
+            <h3 class="section-title">归档结果</h3>
+            <p class="section-copy">每条归档项都直接暴露完成时间、负责人和完成总结，不让历史变成黑盒。</p>
+            <div class="archive-table">
+              <div class="archive-row">
+                <div>
+                  <div class="title">归档检索规则梳理</div>
+                  <p class="archive-meta">完成时间 09:58 · 主负责人 赵可 · 协作 陈阳</p>
+                </div>
+                <span class="chip done">已归档</span>
+              </div>
+              <div class="archive-row">
+                <div>
+                  <div class="title">v1 事项模板整理</div>
+                  <p class="archive-meta">完成时间 昨天 18:40 · 主负责人 陈阳</p>
+                </div>
+                <span class="chip done">已归档</span>
+              </div>
+              <div class="archive-row">
+                <div>
+                  <div class="title">成员视图字段收口</div>
+                  <p class="archive-meta">完成时间 昨天 15:12 · 主负责人 林青 · 协作 周岚</p>
+                </div>
+                <span class="chip done">已归档</span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const ACTOR_KEY = "team-workboard-prototype-actor";
+    const DETAIL_KEY = "team-workboard-prototype-detail";
+    const LAST_CREATED_KEY = "team-workboard-prototype-last-created";
+    const API_BASE = "/api";
+
+    const seedState = {
+      users: [
+        { id: "u-chen", name: "陈阳", role: "产品推进 / 模板与流程", avatar: "陈" },
+        { id: "u-lin", name: "林青", role: "前端实现 / 界面原型", avatar: "林" },
+        { id: "u-zhou", name: "周岚", role: "后端与部署", avatar: "周" },
+        { id: "u-zhao", name: "赵可", role: "测试与归档", avatar: "赵" }
+      ],
+      items: [
+        {
+          id: "item-timeline",
+          code: "TW-001",
+          kind: "collab",
+          title: "完善事项详情页的事件时间线展示",
+          status: "in_progress",
+          ownerId: "u-lin",
+          collaborators: ["u-zhou"],
+          progress: 70,
+          dueAt: "2026-04-09T17:30:00+08:00",
+          dueText: "今天 17:30",
+          objective: "让团队能看清一个事项是怎么一步步推进到现在的。",
+          acceptance: "时间线覆盖创建、状态变更、负责人变更、进度更新、完成、归档，并在移动端可读。",
+          current: "时间线主体样式和事件分层已完成，剩余边界状态和空列表引导。",
+          nextStep: "补“刚刚被其他人更新”的并发提示，以及“无事件时”的空状态文案。",
+          summary: "",
+          updatedAt: "2026-04-09T10:42:00+08:00",
+          archivedAt: "",
+          events: [
+            { id: "e1", type: "created", actorId: "u-chen", time: "2026-04-09T10:15:00+08:00", text: "创建事项，目标时间设为今天 17:30。" },
+            { id: "e2", type: "owner_changed", actorId: "u-chen", time: "2026-04-09T10:18:00+08:00", text: "主负责人改为林青，周岚加入协作成员。" },
+            { id: "e3", type: "progress", actorId: "u-lin", time: "2026-04-09T10:42:00+08:00", text: "更新进展到 70%，补充“剩余边界态”说明。" }
+          ]
+        },
+        {
+          id: "item-backup",
+          code: "TW-002",
+          kind: "personal",
+          title: "完成 SQLite 数据备份脚本接入",
+          status: "blocked",
+          ownerId: "u-zhou",
+          collaborators: [],
+          progress: 42,
+          dueAt: "2026-04-09T18:00:00+08:00",
+          dueText: "今天 18:00",
+          objective: "让局域网部署版在异常情况下也能快速回滚和恢复。",
+          acceptance: "备份脚本可手动执行、自动执行一次，并能验证恢复链路。",
+          current: "脚本主体已写完，卡在部署机目录权限确认。",
+          nextStep: "确认容器卷挂载路径和读写权限。",
+          summary: "",
+          updatedAt: "2026-04-09T09:35:00+08:00",
+          archivedAt: "",
+          events: [
+            { id: "e4", type: "created", actorId: "u-zhou", time: "2026-04-09T08:30:00+08:00", text: "创建备份接入事项。" },
+            { id: "e5", type: "blocked", actorId: "u-zhou", time: "2026-04-09T09:35:00+08:00", text: "阻塞原因：局域网部署机目录权限还没确认。" }
+          ]
+        },
+        {
+          id: "item-template",
+          code: "TW-003",
+          kind: "collab",
+          title: "整理 v1 事项模板",
+          status: "done",
+          ownerId: "u-chen",
+          collaborators: ["u-zhao"],
+          progress: 100,
+          dueAt: "2026-04-08T16:00:00+08:00",
+          dueText: "4月8日 16:00",
+          objective: "统一事项描述口径，减少不同成员写法不一致的问题。",
+          acceptance: "模板包含目标、完成标准、负责人、协作成员、目标时间、当前进展、下一步。",
+          current: "已沉淀成基础模板。",
+          nextStep: "后续补多人事项示例。",
+          summary: "已完成模板收口，团队后续新建事项可以直接套用。",
+          updatedAt: "2026-04-08T18:40:00+08:00",
+          archivedAt: "2026-04-08T18:40:00+08:00",
+          events: [
+            { id: "e6", type: "created", actorId: "u-chen", time: "2026-04-08T16:20:00+08:00", text: "创建模板整理事项。" },
+            { id: "e7", type: "done", actorId: "u-chen", time: "2026-04-08T18:40:00+08:00", text: "已完成模板收口，并进入归档。" }
+          ]
+        },
+        {
+          id: "item-archive",
+          code: "TW-004",
+          kind: "collab",
+          title: "归档检索规则梳理",
+          status: "done",
+          ownerId: "u-zhao",
+          collaborators: ["u-chen"],
+          progress: 100,
+          dueAt: "2026-04-09T10:00:00+08:00",
+          dueText: "今天 10:00",
+          objective: "让完成后的事项可以快速搜索和回看。",
+          acceptance: "支持按时间范围和关键词快速筛出归档项。",
+          current: "规则和默认筛选已经确定。",
+          nextStep: "暂不需要额外动作。",
+          summary: "归档页默认只保留轻量筛选，先满足回溯再谈复杂报表。",
+          updatedAt: "2026-04-09T09:58:00+08:00",
+          archivedAt: "2026-04-09T09:58:00+08:00",
+          events: [
+            { id: "e8", type: "created", actorId: "u-zhao", time: "2026-04-09T09:10:00+08:00", text: "创建归档检索规则事项。" },
+            { id: "e9", type: "done", actorId: "u-zhao", time: "2026-04-09T09:58:00+08:00", text: "完成归档规则梳理，写入完成总结。" }
+          ]
+        }
+      ]
+    };
+
+    let state = structuredClone(seedState);
+    let currentView = "overview";
+    let selectedStatus = "in_progress";
+    let toastTimer = null;
+
+    const navButtons = Array.from(document.querySelectorAll(".nav-btn"));
+    const views = Array.from(document.querySelectorAll(".view"));
+    const actorSelect = document.getElementById("actor");
+    const quickItemSelect = document.getElementById("quick-item");
+    const quickNoteInput = document.getElementById("quick-note");
+    const saveUpdateButton = document.getElementById("save-update");
+    const openCreateButton = document.getElementById("open-create");
+    const statusButtons = Array.from(document.querySelectorAll(".pill-btn"));
+    const rangeSelect = document.getElementById("range");
+    const keywordInput = document.getElementById("keyword");
+    const heroPulses = document.getElementById("hero-pulses");
+    const overviewView = document.getElementById("overview");
+    const peopleView = document.getElementById("people");
+    const memberAdminView = document.getElementById("member-admin");
+    const detailView = document.getElementById("detail");
+    const archiveView = document.getElementById("archive");
+    const goOverviewButton = document.getElementById("go-overview");
+    const goDetailButton = document.getElementById("go-detail");
+
+    const modal = createModal();
+    const toast = createToast();
+
+    bindEvents();
+    renderAll();
+    bootstrapData();
+
+    function bindEvents() {
+      navButtons.forEach((button) => {
+        button.addEventListener("click", () => showView(button.dataset.view));
+      });
+
+      statusButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          selectedStatus = button.dataset.status;
+          renderStatusButtons();
+        });
+      });
+
+      actorSelect.addEventListener("change", () => {
+        localStorage.setItem(ACTOR_KEY, actorSelect.value);
+      });
+
+      quickItemSelect.addEventListener("change", () => {
+        localStorage.setItem(DETAIL_KEY, quickItemSelect.value);
+        renderDetail();
+      });
+
+      saveUpdateButton.addEventListener("click", handleQuickUpdate);
+      openCreateButton.addEventListener("click", openCreateModal);
+      goOverviewButton.addEventListener("click", () => showView("overview"));
+      goDetailButton.addEventListener("click", () => showView("detail"));
+      rangeSelect.addEventListener("change", renderArchive);
+      keywordInput.addEventListener("input", renderArchive);
+
+      document.addEventListener("click", (event) => {
+        const opener = event.target.closest("[data-open-item]");
+        if (opener && opener.dataset.openItem) {
+          localStorage.setItem(DETAIL_KEY, opener.dataset.openItem);
+          quickItemSelect.value = opener.dataset.openItem;
+          renderDetail();
+          showView("detail");
+          return;
+        }
+
+        const editUser = event.target.closest("[data-edit-user]");
+        if (editUser) {
+          openMemberModal(editUser.dataset.editUser);
+          return;
+        }
+
+        if (event.target.id === "open-member-create") {
+          openMemberModal();
+          return;
+        }
+
+        const openCreate = event.target.closest("[data-open-create]");
+        if (openCreate) {
+          openCreateModal();
+          return;
+        }
+
+        const deleteUser = event.target.closest("[data-delete-user]");
+        if (deleteUser) {
+          handleDeleteUser(deleteUser.dataset.deleteUser);
+          return;
+        }
+
+        const detailAction = event.target.closest("[data-detail-status]");
+        if (detailAction) {
+          selectedStatus = detailAction.dataset.detailStatus;
+          renderStatusButtons();
+          showToast("已替你切到对应状态，写一句话后直接保存即可。");
+        }
+      });
+    }
+
+    async function bootstrapData() {
+      try {
+        const data = await apiRequest("/bootstrap");
+        state = data;
+        renderAll();
+      } catch (error) {
+        showToast("当前进入离线演示数据模式。");
+      }
+    }
+
+    async function apiRequest(path, options = {}) {
+      const response = await fetch(`${API_BASE}${path}`, {
+        method: options.method || "GET",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: options.body ? JSON.stringify(options.body) : undefined
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || "请求失败");
+      }
+      return data;
+    }
+
+    function renderAll() {
+      renderQuickForm();
+      renderHero();
+      renderOverview();
+      renderPeople();
+      renderMemberAdmin();
+      renderDetail();
+      renderArchive();
+    }
+
+    function renderQuickForm() {
+      const defaultActor = localStorage.getItem(ACTOR_KEY) || state.users[0].id;
+      const currentDetailId = getCurrentDetailItem().id;
+      const activeItems = state.items.filter((item) => item.status !== "done");
+      let itemsForQuickUpdate = activeItems.length ? activeItems : state.items;
+
+      if (!itemsForQuickUpdate.some((item) => item.id === currentDetailId)) {
+        const currentItem = findItem(currentDetailId);
+        if (currentItem) {
+          itemsForQuickUpdate = [currentItem, ...itemsForQuickUpdate];
+        }
+      }
+
+      actorSelect.innerHTML = state.users
+        .map((user) => `<option value="${user.id}">${user.name} / ${user.role}</option>`)
+        .join("");
+      actorSelect.value = defaultActor;
+
+      quickItemSelect.innerHTML = itemsForQuickUpdate
+        .map((item) => `<option value="${item.id}">${item.title}</option>`)
+        .join("");
+      quickItemSelect.value = itemsForQuickUpdate.some((item) => item.id === currentDetailId)
+        ? currentDetailId
+        : itemsForQuickUpdate[0].id;
+
+      quickNoteInput.placeholder = `例如：${findItem(quickItemSelect.value).nextStep}`;
+      renderStatusButtons();
+    }
+
+    function renderStatusButtons() {
+      statusButtons.forEach((button) => {
+        button.classList.toggle("active", button.dataset.status === selectedStatus);
+      });
+    }
+
+    function renderHero() {
+      const activeItems = state.items.filter((item) => item.status !== "done");
+      const multiOwner = activeItems.filter((item) => item.collaborators.length > 0);
+      const dueSoon = activeItems.filter(isDueSoonItem);
+
+      heroPulses.innerHTML = [
+        pulseCard(activeItems.length, "当前活跃事项"),
+        pulseCard(multiOwner.length, "多人协作事项"),
+        pulseCard(dueSoon.length, "即将到期"),
+        pulseCard("共享", "局域网内数据统一")
+      ].join("");
+    }
+
+    function renderOverview() {
+      const activeItems = state.items.filter((item) => item.status !== "done");
+      const blockedItems = activeItems.filter((item) => item.status === "blocked");
+      const dueSoon = activeItems.filter(isDueSoonItem);
+      const doneToday = state.items.filter((item) => item.archivedAt.startsWith("2026-04-09"));
+      const focusItems = [...activeItems].sort(sortByDueThenUpdate).slice(0, 3);
+      const recentEvents = state.items
+        .flatMap((item) => item.events.map((event) => ({ ...event, itemTitle: item.title })))
+        .sort((left, right) => new Date(right.time) - new Date(left.time))
+        .slice(0, 4);
+
+      overviewView.innerHTML = `
+        <div class="cards-grid">
+          ${metricCard("活跃事项", activeItems.length, activeItems.length ? "大家现在在推进的事都能直接看到" : "当前没有活跃事项")}
+          ${metricCard("即将到期", dueSoon.length, dueSoon.length ? "默认优先把今天要收口的事项顶上来" : "当前没有今天到期的事项")}
+          ${metricCard("阻塞事项", blockedItems.length, blockedItems.length ? "卡住的问题会被单独暴露出来" : "当前没有阻塞事项")}
+          ${metricCard("今日完成", doneToday.length, doneToday.length ? "完成后直接进入归档回溯" : "今天还没有新增归档")}
+        </div>
+
+        <div class="two-up">
+          <article class="panel">
+            <div class="row" style="margin-bottom: 16px;">
+              <div>
+                <h3 class="section-title">需要马上关注</h3>
+                <p class="section-copy" style="margin-bottom: 0;">优先把快到点和已经卡住的事项拎出来，不让它们淹没在任务海里。</p>
+              </div>
+              <button class="btn btn-soft" type="button" data-open-create="true">新建事项</button>
+            </div>
+            <div class="list">
+              ${focusItems.length ? focusItems.map(renderFocusItem).join("") : emptyState("当前没有活跃事项，适合新建第一条。")}
+            </div>
+          </article>
+
+          <article class="panel">
+            <h3 class="section-title">最近更新流</h3>
+            <p class="section-copy">这里是无登录版本里最重要的信任补丁。动作轻，但上下文要完整。</p>
+            <div class="timeline">
+              ${recentEvents.map(renderRecentEvent).join("")}
+            </div>
+          </article>
+        </div>
+      `;
+    }
+
+    function renderPeople() {
+      peopleView.innerHTML = `
+        <article class="panel">
+          <h3 class="section-title">成员看板</h3>
+          <p class="section-copy">默认按成员展开，回答一个最直接的问题：每个人现在手上在推进什么。</p>
+          <div class="member-grid">
+            ${state.users.map(renderMemberCard).join("")}
+          </div>
+        </article>
+      `;
+    }
+
+    function renderMemberAdmin() {
+      memberAdminView.innerHTML = `
+        <article class="panel">
+          <div class="row" style="margin-bottom: 16px;">
+            <div>
+              <h3 class="section-title">成员管理</h3>
+              <p class="section-copy" style="margin-bottom: 0;">这里只做成员资料维护，不和看板混在一起。</p>
+            </div>
+            <button id="open-member-create" class="btn btn-soft" type="button">新增成员</button>
+          </div>
+          <div class="list">
+            ${state.users.map(renderMemberAdminRow).join("")}
+          </div>
+        </article>
+      `;
+    }
+
+    function renderDetail() {
+      const item = getCurrentDetailItem();
+      const isNewlyCreated = localStorage.getItem(LAST_CREATED_KEY) === item.id;
+
+      detailView.innerHTML = `
+        <div class="detail-layout">
+          <article class="panel">
+            <h3 class="section-title">事项详情页</h3>
+            <p class="section-copy">详情页保留完整信息，但最常用的动作压成左侧的快速更新区，不让成员每次都填大表单。</p>
+
+            ${isNewlyCreated ? `
+              <div class="quick-box">
+                <div class="title">新事项已创建</div>
+                <p class="section-copy" style="margin-bottom: 0;">编号 ${item.code}，现在可以直接补一句话进展，或者继续完善细节。</p>
+              </div>
+            ` : ""}
+
+            <div class="quick-box">
+              <div class="title">最少操作版更新</div>
+              <p class="section-copy" style="margin-bottom: 0;">选更新人，写一句话，点一个状态，然后保存。就这 3 步。</p>
+            </div>
+
+            <div class="detail-block">
+              <div class="row">
+                <div>
+                  <div class="chips" style="margin-bottom: 10px;">
+                    <span class="chip">${item.code || item.id}</span>
+                    <span class="chip">${itemKindLabel(item)}</span>
+                  </div>
+                  <div class="title">${item.title}</div>
+                  <p class="subtle">目标：${item.objective}</p>
+                </div>
+                <span class="chip ${statusClass(item.status)}">${statusLabel(item.status)}</span>
+              </div>
+            </div>
+
+            <div class="detail-block">
+              <div class="chips">
+                <span class="chip">主负责人 ${findUser(item.ownerId).name}</span>
+                ${item.collaborators.map((userId) => `<span class="chip">协作 ${findUser(userId).name}</span>`).join("")}
+                <span class="chip ${dueChipClass(item)}">${dueBadgeText(item)}</span>
+                <span class="chip">当前进度 ${item.progress}%</span>
+              </div>
+            </div>
+
+            <div class="detail-block">
+              <div class="title">完成标准</div>
+              <p class="subtle">${item.acceptance}</p>
+            </div>
+
+            ${item.githubLinks && item.githubLinks.length ? `
+              <div class="detail-block">
+                <div class="title">GitHub 关联</div>
+                <div class="chips" style="margin-top: 12px;">
+                  ${item.githubLinks.map((link) => `<a class="chip" href="${link}" target="_blank" rel="noreferrer">${link.replace(/^https?:\/\//, "")}</a>`).join("")}
+                </div>
+              </div>
+            ` : ""}
+
+            <div class="detail-block">
+              <div class="title">当前进展</div>
+              <p class="subtle">${item.current}</p>
+            </div>
+
+            <div class="detail-block">
+              <div class="title">下一步</div>
+              <p class="subtle">${item.nextStep}</p>
+            </div>
+
+            <div class="detail-block">
+              <div class="title">常用动作</div>
+              <div class="chips" style="margin-top: 12px;">
+                <button class="link-button chip" type="button" data-detail-status="in_progress">一句话更新</button>
+                <button class="link-button chip ${statusClass("blocked")}" type="button" data-detail-status="blocked">改成阻塞</button>
+                <button class="link-button chip" type="button" data-detail-status="review">送评审</button>
+                <button class="link-button chip done" type="button" data-detail-status="done">标记完成</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel">
+            <h3 class="section-title">事件时间线</h3>
+            <p class="section-copy">无登录版本仍然要可信，靠的是每次操作都保留上下文。</p>
+            <div class="timeline">
+              ${item.events.slice().sort((left, right) => new Date(right.time) - new Date(left.time)).map((event) => renderDetailEvent(event, item)).join("")}
+            </div>
+            <div class="action-row" style="margin-top: 16px;">
+              <button class="btn btn-primary" type="button" data-detail-status="in_progress">保存一句话更新</button>
+              <button class="btn btn-soft" type="button" data-detail-status="review">只改状态</button>
+            </div>
+          </article>
+        </div>
+      `;
+    }
+
+    function renderArchive() {
+      const keyword = keywordInput.value.trim();
+      const rangeValue = rangeSelect.value;
+      const archivedItems = state.items
+        .filter((item) => item.status === "done" && item.archivedAt)
+        .filter((item) => matchesKeyword(item, keyword))
+        .filter((item) => matchesRange(item.archivedAt, rangeValue))
+        .sort((left, right) => new Date(right.archivedAt) - new Date(left.archivedAt));
+
+      archiveView.querySelector(".archive-table").innerHTML = archivedItems.length
+        ? archivedItems.map(renderArchiveRow).join("")
+        : emptyState("没有匹配到归档项，可以换个关键词或时间范围试试。");
+    }
+
+    async function handleQuickUpdate() {
+      const actorId = actorSelect.value;
+      const item = findItem(quickItemSelect.value);
+      const note = quickNoteInput.value.trim();
+
+      if (!note) {
+        showToast("先写一句话进展，再保存。");
+        quickNoteInput.focus();
+        return;
+      }
+
+      try {
+        const updatedItem = await apiRequest(`/items/${item.id}/quick-update`, {
+          method: "PATCH",
+          body: {
+            actorId,
+            status: selectedStatus,
+            note
+          }
+        });
+
+        replaceItem(updatedItem);
+        localStorage.setItem(ACTOR_KEY, actorId);
+        localStorage.setItem(DETAIL_KEY, item.id);
+        quickNoteInput.value = "";
+        renderAll();
+        showView("detail");
+        showToast(`已记录 ${findUser(actorId).name} 的更新。`);
+      } catch (error) {
+        showToast(error.message);
+      }
+    }
+
+    function openCreateModal() {
+      const defaultActor = actorSelect.value || state.users[0].id;
+      const defaultDue = defaultCreateDue();
+      const duePresets = [
+        { label: "今天下班前", dueAt: buildPresetDueAt(0, 18, 0) },
+        { label: "明天中午", dueAt: buildPresetDueAt(1, 12, 0) },
+        { label: "本周内", dueAt: buildWeekPresetDueAt(5, 18, 0) }
+      ];
+
+      modal.innerHTML = `
+        <div class="modal">
+          <div class="stack">
+            <div>
+              <h3 class="section-title">新建事项</h3>
+              <p class="section-copy">先把事项建起来最重要。默认只填标题、负责人、时间和类型，其他信息都可以稍后补。</p>
+            </div>
+            <div class="quick-box">
+              <div class="title">最少只要 4 项</div>
+              <p class="form-hint">标题清楚、负责人明确、时间有口径、类型分清个人或协作，就已经足够让团队看懂。</p>
+            </div>
+            <div class="stack">
+              <label class="subtle" for="new-title">事项标题</label>
+              <input id="new-title" type="text" placeholder="例如：补成员看板空状态">
+            </div>
+            <div class="field-grid">
+              <div class="stack">
+                <label class="subtle" for="new-owner">主负责人</label>
+                <select id="new-owner">${state.users.map((user) => `<option value="${user.id}" ${user.id === defaultActor ? "selected" : ""}>${user.name}</option>`).join("")}</select>
+              </div>
+              <div class="stack">
+                <label class="subtle" for="new-due-date">目标时间</label>
+                <div class="field-grid">
+                  <input id="new-due-date" type="date" value="${defaultDue.date}">
+                  <input id="new-due-time" type="time" value="${defaultDue.time}">
+                </div>
+              </div>
+            </div>
+            <div class="stack">
+              <span class="subtle">常用时间</span>
+              <div class="preset-row">
+                ${duePresets.map((preset) => `<button class="preset-btn" type="button" data-due-preset="${preset.dueAt}">${preset.label}</button>`).join("")}
+              </div>
+              <p class="form-hint">保存后看板会自动显示为“今天 18:00 / 明天 12:00”这类统一口径。</p>
+            </div>
+            <div class="field-grid">
+              <div class="stack">
+                <label class="subtle" for="new-kind">事项类型</label>
+                <select id="new-kind">
+                  <option value="personal">个人事项</option>
+                  <option value="collab">多人协作事项</option>
+                </select>
+              </div>
+              <div class="stack">
+                <label class="subtle" for="new-objective">一句话目标</label>
+                <input id="new-objective" type="text" placeholder="例如：先把详情时间线和空状态补齐">
+              </div>
+            </div>
+            <div class="stack">
+              <p class="form-hint">个人事项默认只挂一个负责人。只有选了“多人协作事项”，才需要补协作成员。</p>
+            </div>
+            <div id="collab-panel" class="stack collab-panel is-hidden" hidden>
+              <span class="subtle">协作成员</span>
+              <div class="chips">
+                ${state.users.map((user) => `<label class="chip"><input type="checkbox" name="new-collaborator" value="${user.id}" data-owner-lock="${user.id === defaultActor ? "true" : "false"}"${user.id === defaultActor ? " disabled" : ""}>${user.name}</label>`).join("")}
+              </div>
+            </div>
+            <details class="advanced-box">
+              <summary>补充细节（可稍后再填）</summary>
+              <div class="stack" style="margin-top: 12px;">
+                <div class="stack">
+                  <label class="subtle" for="new-acceptance">完成标准</label>
+                  <textarea id="new-acceptance" placeholder="例如：移动端可读、时间线覆盖创建 / 更新 / 完成。"></textarea>
+                </div>
+                <div class="stack">
+                  <label class="subtle" for="new-github">GitHub 关联（可选）</label>
+                  <input id="new-github" type="text" placeholder="例如：https://github.com/org/repo/issues/12">
+                </div>
+              </div>
+            </details>
+            <div class="modal-actions">
+              <button id="create-submit" class="btn btn-primary" type="button">创建事项</button>
+              <button id="create-cancel" class="btn btn-soft" type="button">取消</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      modal.classList.add("active");
+      bindCreateModalEvents();
+      modal.querySelector("#new-title").focus();
+      syncCreateOwnerState();
+      toggleCreateCollaborators();
+    }
+
+    function bindCreateModalEvents() {
+      modal.querySelector("#create-cancel").addEventListener("click", closeCreateModal);
+      modal.addEventListener("click", closeOnBackdrop);
+      modal.querySelector("#create-submit").addEventListener("click", handleCreateItem, { once: true });
+      modal.querySelector("#new-kind").addEventListener("change", toggleCreateCollaborators);
+      modal.querySelector("#new-owner").addEventListener("change", syncCreateOwnerState);
+      modal.querySelectorAll("[data-due-preset]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const due = splitDueAtForForm(button.dataset.duePreset);
+          modal.querySelector("#new-due-date").value = due.date;
+          modal.querySelector("#new-due-time").value = due.time;
+        });
+      });
+    }
+
+    function syncCreateOwnerState() {
+      const ownerId = modal.querySelector("#new-owner")?.value;
+
+      modal.querySelectorAll('input[name="new-collaborator"]').forEach((input) => {
+        const isOwner = input.value === ownerId;
+        input.dataset.ownerLock = isOwner ? "true" : "false";
+        input.disabled = isOwner || modal.querySelector("#new-kind")?.value !== "collab";
+
+        if (isOwner) {
+          input.checked = false;
+        }
+      });
+    }
+
+    function toggleCreateCollaborators() {
+      const isCollab = modal.querySelector("#new-kind")?.value === "collab";
+      const collabPanel = modal.querySelector("#collab-panel");
+
+      if (!collabPanel) {
+        return;
+      }
+
+      collabPanel.hidden = !isCollab;
+      collabPanel.classList.toggle("is-hidden", !isCollab);
+
+      modal.querySelectorAll('input[name="new-collaborator"]').forEach((input) => {
+        const ownerLocked = input.dataset.ownerLock === "true";
+        input.disabled = !isCollab || ownerLocked;
+
+        if (!isCollab) {
+          input.checked = false;
+        }
+      });
+    }
+
+    function focusCreatedItem(item) {
+      quickItemSelect.value = item.id;
+      localStorage.setItem(DETAIL_KEY, item.id);
+      selectedStatus = "in_progress";
+      renderStatusButtons();
+      quickNoteInput.value = "";
+      quickNoteInput.placeholder = `例如：${item.nextStep}`;
+
+      requestAnimationFrame(() => {
+        quickNoteInput.focus();
+      });
+    }
+
+    function closeCreateModal(event) {
+      if (event) {
+        event.preventDefault();
+      }
+
+      modal.classList.remove("active");
+      modal.removeEventListener("click", closeOnBackdrop);
+      modal.innerHTML = "";
+    }
+
+    function closeOnBackdrop(event) {
+      if (event.target === modal) {
+        closeCreateModal(event);
+      }
+    }
+
+    async function handleCreateItem() {
+      const title = modal.querySelector("#new-title").value.trim();
+      const ownerId = modal.querySelector("#new-owner").value;
+      const dueDate = modal.querySelector("#new-due-date").value;
+      const dueTime = modal.querySelector("#new-due-time").value;
+      const dueAt = buildDueAtFromForm(dueDate, dueTime);
+      const kind = modal.querySelector("#new-kind").value;
+      const objective = modal.querySelector("#new-objective").value.trim() || "等待补充目标。";
+      const acceptance = modal.querySelector("#new-acceptance").value.trim() || "待补充完成标准。";
+      const githubLink = modal.querySelector("#new-github").value.trim();
+      const collaborators = kind === "collab"
+        ? Array.from(modal.querySelectorAll('input[name="new-collaborator"]:checked')).map((input) => input.value)
+        : [];
+
+      if (!title) {
+        showToast("先写事项标题，再创建。");
+        modal.querySelector("#new-title").focus();
+        return;
+      }
+
+      if (!dueAt) {
+        showToast("请补完整的目标日期和时间。");
+        modal.querySelector("#new-due-date").focus();
+        return;
+      }
+
+      try {
+        const item = await apiRequest("/items", {
+          method: "POST",
+          body: {
+            title,
+            ownerId,
+            kind,
+            dueAt,
+            objective,
+            acceptance,
+            githubLinks: githubLink ? [githubLink] : [],
+            collaborators
+          }
+        });
+
+        state.items.push(item);
+        localStorage.setItem(DETAIL_KEY, item.id);
+        localStorage.setItem(LAST_CREATED_KEY, item.id);
+        closeCreateModal();
+        renderAll();
+        focusCreatedItem(item);
+        showView("detail");
+        showToast("新事项已经建好，光标已经帮你切到一句话更新。");
+      } catch (error) {
+        showToast(error.message);
+      }
+    }
+
+    function getCurrentDetailItem() {
+      const storedId = localStorage.getItem(DETAIL_KEY);
+      return findItem(storedId) || state.items[0];
+    }
+
+    function findUser(userId) {
+      return state.users.find((user) => user.id === userId) || state.users[0];
+    }
+
+    function findItem(itemId) {
+      return state.items.find((item) => item.id === itemId);
+    }
+
+    function showView(viewId) {
+      currentView = viewId;
+      navButtons.forEach((button) => {
+        button.setAttribute("aria-selected", String(button.dataset.view === viewId));
+      });
+
+      views.forEach((view) => {
+        view.classList.toggle("active", view.id === viewId);
+      });
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => toast.classList.remove("show"), 2200);
+    }
+
+    function createModal() {
+      const modalElement = document.createElement("div");
+      modalElement.className = "modal-backdrop";
+      document.body.appendChild(modalElement);
+      return modalElement;
+    }
+
+    function createToast() {
+      const toastElement = document.createElement("div");
+      toastElement.className = "toast";
+      document.body.appendChild(toastElement);
+      return toastElement;
+    }
+
+    function renderFocusItem(item) {
+      return `
+        <div class="list-item click-card" data-open-item="${item.id}">
+          <div class="item-head">
+            <div>
+              <div class="chips" style="margin-bottom: 8px;">
+                <span class="chip">${item.code || item.id}</span>
+                <span class="chip">${itemKindLabel(item)}</span>
+              </div>
+              <div class="title">${item.title}</div>
+            </div>
+            <span class="chip ${dueChipClass(item)}">${dueBadgeText(item)}</span>
+          </div>
+          <div class="chips">
+            <span class="chip">主负责人 ${findUser(item.ownerId).name}</span>
+            ${item.collaborators.map((userId) => `<span class="chip">协作 ${findUser(userId).name}</span>`).join("")}
+            <span class="chip">状态 ${statusLabel(item.status)}</span>
+            ${item.githubLinks && item.githubLinks.length ? `<span class="chip">GitHub ${item.githubLinks.length}</span>` : ""}
+          </div>
+          <p class="subtle">当前进展：${item.current}</p>
+          <div class="chips">
+            <span class="chip">一句话更新</span>
+            <span class="chip">改状态</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderRecentEvent(event) {
+      return `
+        <div class="timeline-row">
+          <span class="timeline-badge">${formatTime(event.time)}</span>
+          <div>
+            <div class="title">${findUser(event.actorId).name} 更新了 “${event.itemTitle}”</div>
+            <p class="timeline-meta">${event.text}</p>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderMemberCard(user) {
+      const owned = state.items.filter((item) => item.ownerId === user.id && item.status !== "done");
+      const topItem = owned.sort(sortByDueThenUpdate)[0];
+      const collaborationCount = state.items.filter((item) => item.collaborators.includes(user.id) && item.status !== "done").length;
+      const badge = topItem && topItem.status === "blocked"
+        ? `<span class="chip blocked">1 项阻塞</span>`
+        : `<span class="chip">${owned.length} 项进行中</span>`;
+
+      return `
+        <div class="member-card click-card" data-open-item="${topItem ? topItem.id : ""}">
+          <div class="member-top">
+            <div class="row">
+              <div class="avatar">${user.avatar}</div>
+              <div>
+                <div class="title">${user.name}</div>
+                <p class="member-meta">${user.role}</p>
+              </div>
+            </div>
+            ${badge}
+          </div>
+          ${topItem ? `
+            <div>
+              <div class="chips" style="margin-bottom: 8px;">
+                <span class="chip">${topItem.code || topItem.id}</span>
+                <span class="chip">${itemKindLabel(topItem)}</span>
+              </div>
+              <div class="title">${topItem.title}</div>
+              <p class="subtle">目标时间：${formatDueLabel(topItem)}</p>
+            </div>
+            <div class="progressbar"><span style="width: ${topItem.progress}%"></span></div>
+            <div class="member-tags">
+              <span class="chip ${dueChipClass(topItem)}">${dueBadgeText(topItem)}</span>
+              <span class="chip">进展 ${topItem.progress}%</span>
+              <span class="chip">${topItem.nextStep}</span>
+              <span class="chip">协作中事项 ${collaborationCount}</span>
+            </div>
+          ` : `
+            <div class="empty-state">当前没有该成员负责的活跃事项。</div>
+          `}
+        </div>
+      `;
+    }
+
+    function renderMemberAdminRow(user) {
+      const activeCount = state.items.filter((item) => item.ownerId === user.id && item.status !== "done").length;
+      const relatedCount = state.items.filter((item) => item.ownerId === user.id || item.collaborators.includes(user.id)).length;
+      return `
+        <div class="list-item">
+          <div class="row">
+            <div>
+              <div class="title">${user.name}</div>
+              <p class="subtle">${user.role}</p>
+            </div>
+            <div class="chips">
+              <button class="btn btn-soft" type="button" data-edit-user="${user.id}">编辑</button>
+              <button class="btn btn-soft" type="button" data-delete-user="${user.id}">删除</button>
+            </div>
+          </div>
+          <div class="chips">
+            <span class="chip">负责中 ${activeCount}</span>
+            <span class="chip">${relatedCount ? `关联事项 ${relatedCount}` : "可直接删除"}</span>
+            <span class="chip">标识 ${user.avatar}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderDetailEvent(event, item) {
+      return `
+        <div class="timeline-row">
+          <span class="timeline-badge">${event.type}</span>
+          <div>
+            <div class="title">${findUser(event.actorId).name} · ${item.title}</div>
+            <p class="timeline-meta">${formatDateTime(event.time)} · ${event.text}</p>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderArchiveRow(item) {
+      return `
+        <div class="archive-row click-card" data-open-item="${item.id}">
+          <div>
+            <div class="chips" style="margin-bottom: 8px;">
+              <span class="chip">${item.code || item.id}</span>
+              <span class="chip">${itemKindLabel(item)}</span>
+            </div>
+            <div class="title">${item.title}</div>
+            <p class="archive-meta">完成时间 ${formatDateTime(item.archivedAt)} · 主负责人 ${findUser(item.ownerId).name}${item.collaborators.length ? ` · 协作 ${item.collaborators.map((userId) => findUser(userId).name).join("、")}` : ""}</p>
+            <p class="subtle" style="margin-top: 8px;">完成总结：${item.summary || "未补充总结"}</p>
+          </div>
+          <span class="chip done">已归档</span>
+        </div>
+      `;
+    }
+
+    function openMemberModal(userId) {
+      const editingUser = userId ? findUser(userId) : null;
+      modal.innerHTML = `
+        <div class="modal">
+          <div class="stack">
+            <div>
+              <h3 class="section-title">${editingUser ? "编辑成员" : "新增成员"}</h3>
+              <p class="section-copy">只保留姓名和角色两项，避免把成员管理做重。</p>
+            </div>
+            <div class="stack">
+              <label class="subtle" for="member-name">姓名</label>
+              <input id="member-name" type="text" value="${editingUser ? editingUser.name : ""}" placeholder="例如：吴凡">
+            </div>
+            <div class="stack">
+              <label class="subtle" for="member-role">角色说明</label>
+              <input id="member-role" type="text" value="${editingUser ? editingUser.role : ""}" placeholder="例如：运营协调 / 客户反馈">
+            </div>
+            <div class="modal-actions">
+              <button id="member-submit" class="btn btn-primary" type="button">${editingUser ? "保存成员" : "新增成员"}</button>
+              <button id="member-cancel" class="btn btn-soft" type="button">取消</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      modal.classList.add("active");
+      modal.querySelector("#member-name").focus();
+      modal.querySelector("#member-cancel").addEventListener("click", closeCreateModal);
+      modal.querySelector("#member-submit").addEventListener("click", () => handleSaveMember(userId), { once: true });
+      modal.addEventListener("click", closeOnBackdrop);
+    }
+
+    async function handleSaveMember(userId) {
+      const name = modal.querySelector("#member-name").value.trim();
+      const role = modal.querySelector("#member-role").value.trim();
+
+      if (!name || !role) {
+        showToast("姓名和角色都要填。");
+        return;
+      }
+
+      try {
+        const method = userId ? "PATCH" : "POST";
+        const path = userId ? `/users/${userId}` : "/users";
+        const user = await apiRequest(path, {
+          method,
+          body: { name, role }
+        });
+
+        if (userId) {
+          state.users = state.users.map((entry) => entry.id === user.id ? user : entry);
+        } else {
+          state.users.push(user);
+        }
+
+        closeCreateModal();
+        renderAll();
+        showView("people");
+        showToast(userId ? "成员信息已更新。" : "新成员已加入。");
+      } catch (error) {
+        showToast(error.message);
+      }
+    }
+
+    async function handleDeleteUser(userId) {
+      const user = findUser(userId);
+      if (!user) {
+        showToast("成员不存在。");
+        return;
+      }
+
+      const confirmed = window.confirm(`确认删除成员“${user.name}”吗？如果该成员仍关联事项，系统会阻止删除。`);
+      if (!confirmed) {
+        return;
+      }
+
+      try {
+        await apiRequest(`/users/${userId}/delete`, { method: "POST" });
+        state.users = state.users.filter((entry) => entry.id !== userId);
+
+        if (localStorage.getItem(ACTOR_KEY) === userId && state.users[0]) {
+          localStorage.setItem(ACTOR_KEY, state.users[0].id);
+        }
+
+        renderAll();
+        showView("member-admin");
+        showToast("成员已删除。");
+      } catch (error) {
+        showToast(error.message);
+      }
+    }
+
+    function replaceItem(nextItem) {
+      state.items = state.items.map((item) => item.id === nextItem.id ? nextItem : item);
+    }
+
+    function metricCard(label, value, hint) {
+      return `
+        <article class="panel metric">
+          <span class="subtle">${label}</span>
+          <strong>${value}</strong>
+          <span class="delta">${hint}</span>
+        </article>
+      `;
+    }
+
+    function pulseCard(value, label) {
+      return `<div class="pulse"><strong>${value}</strong><p>${label}</p></div>`;
+    }
+
+    function emptyState(text) {
+      return `<div class="empty-state">${text}</div>`;
+    }
+
+    function statusLabel(status) {
+      return {
+        in_progress: "进行中",
+        blocked: "阻塞",
+        review: "待评审",
+        done: "已完成",
+        created: "已创建",
+        progress: "进展更新",
+        owner_changed: "负责人调整"
+      }[status] || status;
+    }
+
+    function statusClass(status) {
+      return {
+        blocked: "blocked",
+        review: "warning",
+        done: "done"
+      }[status] || "";
+    }
+
+    function itemKindLabel(item) {
+      return (item.kind || (item.collaborators && item.collaborators.length ? "collab" : "personal")) === "collab"
+        ? "多人协作"
+        : "个人事项";
+    }
+
+    function defaultNextStep(status) {
+      return {
+        in_progress: "继续推进下一步。",
+        blocked: "先解除阻塞，再继续推进。",
+        review: "等待评审反馈。",
+        done: "等待进入归档回溯。"
+      }[status] || "继续推进下一步。";
+    }
+
+    function nextProgress(progress, status) {
+      if (status === "done") return 100;
+      if (status === "review") return Math.max(progress, 90);
+      if (status === "blocked") return progress;
+      return Math.min(progress + 10, 95);
+    }
+
+    function formatDueLabel(item) {
+      if (item.dueAt) {
+        return formatDueAt(item.dueAt);
+      }
+      return item.dueText || "待安排";
+    }
+
+    function dueVisualState(item) {
+      if (item.status === "done") {
+        return "done";
+      }
+
+      if (!item.dueAt) {
+        return "upcoming";
+      }
+
+      const due = new Date(item.dueAt);
+      if (Number.isNaN(due.getTime())) {
+        return "upcoming";
+      }
+
+      const now = new Date();
+      const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const startTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const startDayAfterTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2);
+
+      if (due < now) {
+        return "overdue";
+      }
+
+      if (due >= startToday && due < startTomorrow) {
+        return "today";
+      }
+
+      if (due >= startTomorrow && due < startDayAfterTomorrow) {
+        return "tomorrow";
+      }
+
+      return "upcoming";
+    }
+
+    function dueChipClass(item) {
+      return {
+        overdue: "blocked",
+        today: "warning",
+        tomorrow: "tomorrow",
+        upcoming: "upcoming",
+        done: "done"
+      }[dueVisualState(item)] || "upcoming";
+    }
+
+    function dueBadgeText(item) {
+      const label = formatDueLabel(item);
+      return {
+        overdue: `已逾期 · ${label}`,
+        today: `今天到期 · ${label}`,
+        tomorrow: `明天到期 · ${label}`,
+        upcoming: `后续排期 · ${label}`,
+        done: `已完成 · ${label}`
+      }[dueVisualState(item)] || label;
+    }
+
+    function isDueSoonItem(item) {
+      if (!item.dueAt) {
+        return (item.dueText || "").includes("今天");
+      }
+
+      const due = new Date(item.dueAt);
+      if (Number.isNaN(due.getTime())) {
+        return false;
+      }
+
+      const now = new Date();
+      const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const startTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      return due < startTomorrow;
+    }
+
+    function sortByDueThenUpdate(left, right) {
+      const leftDue = left.dueAt ? new Date(left.dueAt).getTime() : Number.POSITIVE_INFINITY;
+      const rightDue = right.dueAt ? new Date(right.dueAt).getTime() : Number.POSITIVE_INFINITY;
+
+      if (leftDue !== rightDue) {
+        return leftDue - rightDue;
+      }
+
+      return sortByUpdateDesc(left, right);
+    }
+
+    function sortByUpdateDesc(left, right) {
+      return new Date(right.updatedAt) - new Date(left.updatedAt);
+    }
+
+    function defaultCreateDue() {
+      const now = new Date();
+      const due = new Date(now);
+      due.setHours(18, 0, 0, 0);
+      if (due <= now) {
+        due.setDate(due.getDate() + 1);
+      }
+      return splitDueAtForForm(due.toISOString());
+    }
+
+    function buildPresetDueAt(dayOffset, hours, minutes) {
+      const due = new Date();
+      due.setHours(hours, minutes, 0, 0);
+      due.setDate(due.getDate() + dayOffset);
+      return due.toISOString();
+    }
+
+    function buildWeekPresetDueAt(targetDay, hours, minutes) {
+      const due = new Date();
+      const offset = (targetDay - due.getDay() + 7) % 7;
+      due.setDate(due.getDate() + offset);
+      due.setHours(hours, minutes, 0, 0);
+      return due.toISOString();
+    }
+
+    function splitDueAtForForm(value) {
+      const due = new Date(value);
+      if (Number.isNaN(due.getTime())) {
+        return { date: "", time: "18:00" };
+      }
+
+      return {
+        date: `${due.getFullYear()}-${pad2(due.getMonth() + 1)}-${pad2(due.getDate())}`,
+        time: `${pad2(due.getHours())}:${pad2(due.getMinutes())}`
+      };
+    }
+
+    function buildDueAtFromForm(dateValue, timeValue) {
+      if (!dateValue || !timeValue) {
+        return "";
+      }
+
+      const due = new Date(`${dateValue}T${timeValue}:00`);
+      return Number.isNaN(due.getTime()) ? "" : due.toISOString();
+    }
+
+    function formatDueAt(value) {
+      const due = new Date(value);
+      if (Number.isNaN(due.getTime())) {
+        return "待安排";
+      }
+
+      const now = new Date();
+      const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const startTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const startDayAfterTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2);
+      const timeText = `${pad2(due.getHours())}:${pad2(due.getMinutes())}`;
+
+      if (due >= startToday && due < startTomorrow) {
+        return `今天 ${timeText}`;
+      }
+
+      if (due >= startTomorrow && due < startDayAfterTomorrow) {
+        return `明天 ${timeText}`;
+      }
+
+      if (due.getFullYear() === now.getFullYear()) {
+        return `${due.getMonth() + 1}月${due.getDate()}日 ${timeText}`;
+      }
+
+      return `${due.getFullYear()}-${pad2(due.getMonth() + 1)}-${pad2(due.getDate())} ${timeText}`;
+    }
+
+    function pad2(value) {
+      return String(value).padStart(2, "0");
+    }
+
+    function formatTime(value) {
+      return new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(value));
+    }
+
+    function formatDateTime(value) {
+      return new Intl.DateTimeFormat("zh-CN", {
+        month: "numeric",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }).format(new Date(value));
+    }
+
+    function matchesKeyword(item, keyword) {
+      if (!keyword) return true;
+      const haystack = [item.title, item.summary, item.current, item.objective].join(" ");
+      return haystack.includes(keyword);
+    }
+
+    function matchesRange(value, rangeValue) {
+      const target = new Date(value).getTime();
+      const now = new Date("2026-04-09T23:59:00+08:00").getTime();
+      const diffDays = (now - target) / (1000 * 60 * 60 * 24);
+
+      if (rangeValue.includes("7")) return diffDays <= 7;
+      if (rangeValue.includes("30")) return diffDays <= 30;
+      return true;
+    }
+  </script>
+</body>
+</html>
