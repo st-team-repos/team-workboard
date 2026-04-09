@@ -13,10 +13,10 @@ const host = "0.0.0.0";
 
 const seedState = {
   users: [
-    { id: "u-chen", name: "陈阳", role: "产品推进 / 模板与流程", avatar: "陈" },
-    { id: "u-lin", name: "林青", role: "前端实现 / 界面原型", avatar: "林" },
-    { id: "u-zhou", name: "周岚", role: "后端与部署", avatar: "周" },
-    { id: "u-zhao", name: "赵可", role: "测试与归档", avatar: "赵" }
+    { id: "u-chen", name: "陈阳", role: "产品推进 / 模板与流程", avatar: "陈", active: true },
+    { id: "u-lin", name: "林青", role: "前端实现 / 界面原型", avatar: "林", active: true },
+    { id: "u-zhou", name: "周岚", role: "后端与部署", avatar: "周", active: true },
+    { id: "u-zhao", name: "赵可", role: "测试与归档", avatar: "赵", active: true }
   ],
   items: [
     {
@@ -151,7 +151,8 @@ const server = http.createServer(async (request, response) => {
         id: `u-${Date.now()}`,
         name: requireText(payload.name, "成员姓名"),
         role: requireText(payload.role, "成员角色"),
-        avatar: firstChar(payload.name)
+        avatar: firstChar(payload.name),
+        active: true
       };
       store.users.push(user);
       writeStore(store);
@@ -167,15 +168,15 @@ const server = http.createServer(async (request, response) => {
         return sendJson(response, 404, { error: "成员不存在" });
       }
 
-      const relatedItems = store.items.filter((item) => item.ownerId === userId || item.collaborators.includes(userId));
+      const relatedItems = store.items.filter((item) => item.status !== "done" && (item.ownerId === userId || item.collaborators.includes(userId)));
       if (relatedItems.length) {
         const titles = relatedItems.slice(0, 3).map((item) => item.title).join("、");
         return sendJson(response, 409, { error: `该成员仍关联事项：${titles}` });
       }
 
-      store.users = store.users.filter((entry) => entry.id !== userId);
+      user.active = false;
       writeStore(store);
-      return sendJson(response, 200, { ok: true, deletedUserId: userId });
+      return sendJson(response, 200, { ok: true, user });
     }
 
     const userDetailMatch = requestUrl.pathname.match(/^\/api\/users\/([^/]+)$/);
@@ -193,6 +194,7 @@ const server = http.createServer(async (request, response) => {
         user.name = requireText(payload.name, "成员姓名");
         user.role = requireText(payload.role, "成员角色");
         user.avatar = firstChar(user.name);
+        user.active = payload.active === false ? false : true;
         writeStore(store);
         return sendJson(response, 200, user);
       }
@@ -206,9 +208,11 @@ const server = http.createServer(async (request, response) => {
       const payload = await readJsonBody(request);
       const store = readStore();
       const ownerId = requireText(payload.ownerId, "负责人");
+      ensureActiveUser(store, ownerId, "负责人");
       const requestedCollaborators = Array.isArray(payload.collaborators)
         ? payload.collaborators.filter(Boolean).filter((id) => id !== ownerId)
         : [];
+      validateActiveUsers(store, requestedCollaborators, "协作成员");
       const kind = payload.kind === "collab" || requestedCollaborators.length ? "collab" : "personal";
       const now = new Date().toISOString();
       const dueAt = normalizeIncomingDueAt(payload.dueAt) || defaultDueAt();
@@ -259,6 +263,8 @@ const server = http.createServer(async (request, response) => {
       }
 
       const actorId = requireText(payload.actorId, "更新人");
+      ensureActiveUser(store, actorId, "更新人");
+      ensureItemParticipant(item, actorId);
       const status = requireText(payload.status, "状态");
       const note = requireText(payload.note, "进展说明");
       const now = new Date().toISOString();
@@ -282,9 +288,56 @@ const server = http.createServer(async (request, response) => {
       return sendJson(response, 200, item);
     }
 
+    if (requestUrl.pathname.match(/^\/api\/items\/[^/]+$/) && request.method === "PATCH") {
+      const itemId = requestUrl.pathname.split("/")[3];
+      const payload = await readJsonBody(request);
+      const store = readStore();
+      const item = store.items.find((entry) => entry.id === itemId);
+
+      if (!item) {
+        return sendJson(response, 404, { error: "事项不存在" });
+      }
+
+      const ownerId = requireText(payload.ownerId || item.ownerId, "负责人");
+      ensureActiveUser(store, ownerId, "负责人");
+      const requestedCollaborators = Array.isArray(payload.collaborators)
+        ? payload.collaborators.filter(Boolean).filter((id) => id !== ownerId)
+        : item.collaborators;
+      validateActiveUsers(store, requestedCollaborators, "协作成员");
+      const kind = payload.kind === "collab" || requestedCollaborators.length ? "collab" : "personal";
+      const dueAt = normalizeIncomingDueAt(payload.dueAt) || item.dueAt || defaultDueAt();
+      const actorId = requireText(payload.actorId || ownerId, "更新人");
+      ensureActiveUser(store, actorId, "更新人");
+      ensureItemParticipant(item, actorId);
+
+      item.title = requireText(payload.title || item.title, "事项标题");
+      item.ownerId = ownerId;
+      item.kind = kind;
+      item.collaborators = kind === "collab" ? requestedCollaborators : [];
+      item.dueAt = dueAt;
+      item.dueText = formatDueText(dueAt);
+      item.objective = requireText(payload.objective || item.objective, "目标");
+      item.acceptance = requireText(payload.acceptance || item.acceptance, "完成标准");
+      item.githubLinks = Array.isArray(payload.githubLinks) ? payload.githubLinks.filter(Boolean) : item.githubLinks;
+      item.current = requireText(payload.current || item.current, "当前进展");
+      item.nextStep = requireText(payload.nextStep || item.nextStep, "下一步");
+      item.summary = typeof payload.summary === "string" ? payload.summary.trim() : item.summary;
+      item.updatedAt = new Date().toISOString();
+      item.events.push({
+        id: `e-${Date.now()}`,
+        type: "edited",
+        actorId,
+        time: item.updatedAt,
+        text: "更新了事项基础信息。"
+      });
+
+      writeStore(store);
+      return sendJson(response, 200, item);
+    }
+
     return serveStatic(requestUrl.pathname, response);
   } catch (error) {
-    return sendJson(response, 400, { error: error.message || "请求失败" });
+    return sendJson(response, error.statusCode || 400, { error: error.message || "请求失败" });
   }
 });
 
@@ -315,7 +368,13 @@ function writeStore(value) {
 
 function normalizeStore(store) {
   return {
-    users: Array.isArray(store.users) ? store.users : [],
+    users: Array.isArray(store.users)
+      ? store.users.map((user) => ({
+          ...user,
+          avatar: firstChar(user.name || user.avatar),
+          active: user.active === false ? false : true
+        }))
+      : [],
     items: (store.items || []).map((item, index) => normalizeItem(item, index))
   };
 }
@@ -533,6 +592,30 @@ function requireText(value, fieldName) {
 
 function firstChar(text) {
   return String(text || "").trim().slice(0, 1) || "成";
+}
+
+function ensureActiveUser(store, userId, fieldName) {
+  const user = (store.users || []).find((entry) => entry.id === userId);
+  if (!user || user.active === false) {
+    throw new Error(`${fieldName}不可用`);
+  }
+  return user;
+}
+
+function validateActiveUsers(store, userIds, fieldName) {
+  (userIds || []).forEach((userId) => ensureActiveUser(store, userId, fieldName));
+}
+
+function isItemParticipant(item, userId) {
+  return item.ownerId === userId || (item.collaborators || []).includes(userId);
+}
+
+function ensureItemParticipant(item, userId) {
+  if (!isItemParticipant(item, userId)) {
+    const error = new Error("只有事项参与人员才能更新或编辑该事项");
+    error.statusCode = 403;
+    throw error;
+  }
 }
 
 function nextProgress(progress, status) {

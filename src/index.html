@@ -323,6 +323,34 @@
       border-radius: 18px;
     }
 
+    .detail-card-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .detail-item-card {
+      display: grid;
+      gap: 12px;
+      padding: 16px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid var(--line);
+      transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .detail-item-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(34, 107, 90, 0.28);
+      box-shadow: 0 14px 30px rgba(53, 45, 28, 0.08);
+    }
+
+    .detail-item-card.current {
+      border-color: rgba(34, 107, 90, 0.42);
+      box-shadow: 0 18px 34px rgba(34, 107, 90, 0.12);
+      background: linear-gradient(180deg, rgba(236, 248, 243, 0.98), rgba(255, 251, 244, 0.9));
+    }
+
     .row,
     .item-head,
     .timeline-row,
@@ -527,7 +555,7 @@
     }
 
     .detail-layout {
-      grid-template-columns: 1.15fr 0.85fr;
+      grid-template-columns: 1fr;
     }
 
     .detail-block {
@@ -535,6 +563,34 @@
       border-radius: 20px;
       background: rgba(255, 255, 255, 0.74);
       border: 1px solid var(--line);
+    }
+
+    .action-buttons {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .action-btn {
+      justify-content: center;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .action-btn-warning {
+      background: var(--warning-soft);
+      color: #8e6100;
+    }
+
+    .action-btn-danger {
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    .action-btn-done {
+      background: var(--done-soft);
+      color: var(--done);
     }
 
     .archive-layout {
@@ -738,6 +794,8 @@
       .member-grid,
       .detail-layout,
       .archive-layout,
+      .detail-card-grid,
+      .action-buttons,
       .status-pills,
       .simple-rules {
         grid-template-columns: 1fr;
@@ -1358,6 +1416,7 @@
 
       quickItemSelect.addEventListener("change", () => {
         localStorage.setItem(DETAIL_KEY, quickItemSelect.value);
+        renderQuickForm();
         renderDetail();
       });
 
@@ -1369,10 +1428,23 @@
       keywordInput.addEventListener("input", renderArchive);
 
       document.addEventListener("click", (event) => {
+        const completeItem = event.target.closest("[data-complete-item]");
+        if (completeItem) {
+          handleCompleteItem(completeItem.dataset.completeItem);
+          return;
+        }
+
+        const editItem = event.target.closest("[data-edit-item]");
+        if (editItem) {
+          openItemEditModal(editItem.dataset.editItem);
+          return;
+        }
+
         const opener = event.target.closest("[data-open-item]");
         if (opener && opener.dataset.openItem) {
           localStorage.setItem(DETAIL_KEY, opener.dataset.openItem);
           quickItemSelect.value = opener.dataset.openItem;
+          renderQuickForm();
           renderDetail();
           showView("detail");
           return;
@@ -1447,7 +1519,7 @@
     }
 
     function renderQuickForm() {
-      const defaultActor = localStorage.getItem(ACTOR_KEY) || state.users[0].id;
+      const users = activeUsers();
       const currentDetailId = getCurrentDetailItem().id;
       const activeItems = state.items.filter((item) => item.status !== "done");
       let itemsForQuickUpdate = activeItems.length ? activeItems : state.items;
@@ -1459,19 +1531,30 @@
         }
       }
 
-      actorSelect.innerHTML = state.users
-        .map((user) => `<option value="${user.id}">${user.name} / ${user.role}</option>`)
-        .join("");
-      actorSelect.value = defaultActor;
-
       quickItemSelect.innerHTML = itemsForQuickUpdate
         .map((item) => `<option value="${item.id}">${item.title}</option>`)
         .join("");
       quickItemSelect.value = itemsForQuickUpdate.some((item) => item.id === currentDetailId)
         ? currentDetailId
-        : itemsForQuickUpdate[0].id;
+        : (itemsForQuickUpdate[0]?.id || "");
+      quickItemSelect.disabled = !itemsForQuickUpdate.length;
 
-      quickNoteInput.placeholder = `例如：${findItem(quickItemSelect.value).nextStep}`;
+      const selectedItem = findItem(quickItemSelect.value) || itemsForQuickUpdate[0];
+      const allowedActors = selectedItem ? participantUsers(selectedItem) : users;
+      const defaultActor = resolveActorId(localStorage.getItem(ACTOR_KEY) || state.users[0]?.id || "", selectedItem);
+
+      actorSelect.innerHTML = allowedActors
+        .map((user) => `<option value="${user.id}">${user.name} / ${user.role}</option>`)
+        .join("");
+      actorSelect.value = defaultActor;
+      actorSelect.disabled = !allowedActors.length;
+      if (defaultActor) {
+        localStorage.setItem(ACTOR_KEY, defaultActor);
+      }
+
+      saveUpdateButton.disabled = !allowedActors.length || !itemsForQuickUpdate.length;
+      quickNoteInput.placeholder = selectedItem ? `例如：${selectedItem.nextStep}` : "暂无可更新事项";
+      quickNoteInput.disabled = !selectedItem;
       renderStatusButtons();
     }
 
@@ -1539,18 +1622,20 @@
     }
 
     function renderPeople() {
+      const users = activeUsers();
       peopleView.innerHTML = `
         <article class="panel">
           <h3 class="section-title">成员看板</h3>
           <p class="section-copy">默认按成员展开，回答一个最直接的问题：每个人现在手上在推进什么。</p>
           <div class="member-grid">
-            ${state.users.map(renderMemberCard).join("")}
+            ${users.length ? users.map(renderMemberCard).join("") : emptyState("当前没有可展示的在岗成员。")}
           </div>
         </article>
       `;
     }
 
     function renderMemberAdmin() {
+      const users = activeUsers();
       memberAdminView.innerHTML = `
         <article class="panel">
           <div class="row" style="margin-bottom: 16px;">
@@ -1561,7 +1646,7 @@
             <button id="open-member-create" class="btn btn-soft" type="button">新增成员</button>
           </div>
           <div class="list">
-            ${state.users.map(renderMemberAdminRow).join("")}
+            ${users.length ? users.map(renderMemberAdminRow).join("") : emptyState("当前没有可维护的成员。")}
           </div>
         </article>
       `;
@@ -1570,26 +1655,46 @@
     function renderDetail() {
       const item = getCurrentDetailItem();
       const isNewlyCreated = localStorage.getItem(LAST_CREATED_KEY) === item.id;
+      const activeItems = state.items
+        .filter((entry) => entry.status !== "done")
+        .sort(sortByDueThenUpdate);
 
       detailView.innerHTML = `
         <div class="detail-layout">
           <article class="panel">
-            <h3 class="section-title">事项详情页</h3>
-            <p class="section-copy">详情页保留完整信息，但最常用的动作压成左侧的快速更新区，不让成员每次都填大表单。</p>
+            <div class="detail-block">
+              <div class="row">
+                <div>
+                  <h3 class="section-title" style="margin-bottom: 6px;">进行中事项</h3>
+                  <p class="section-copy" style="margin-bottom: 0;">先选当前事项，下面只看这一条的详情，不把总览和详情混在一起。</p>
+                </div>
+                <span class="chip">${activeItems.length} 项进行中</span>
+              </div>
+              <div class="detail-card-grid" style="margin-top: 16px;">
+                ${activeItems.length ? activeItems.map((activeItem) => renderActiveDetailRow(activeItem, item.id)).join("") : emptyState("当前没有进行中的事项。")}
+              </div>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="detail-block">
+              <div class="row">
+                <div>
+                  <h3 class="section-title" style="margin-bottom: 6px;">事项详情</h3>
+                  <p class="section-copy" style="margin-bottom: 0;">只展示当前选中的这一条，减少来回扫信息的成本。</p>
+                </div>
+                <span class="chip ${statusClass(item.status)}">${statusLabel(item.status)}</span>
+              </div>
+            </div>
 
             ${isNewlyCreated ? `
-              <div class="quick-box">
+              <div class="quick-box" style="margin-top: 18px;">
                 <div class="title">新事项已创建</div>
-                <p class="section-copy" style="margin-bottom: 0;">编号 ${item.code}，现在可以直接补一句话进展，或者继续完善细节。</p>
+                <p class="section-copy" style="margin-bottom: 0;">编号 ${item.code}，现在最值得做的是补一句话进展。</p>
               </div>
             ` : ""}
 
-            <div class="quick-box">
-              <div class="title">最少操作版更新</div>
-              <p class="section-copy" style="margin-bottom: 0;">选更新人，写一句话，点一个状态，然后保存。就这 3 步。</p>
-            </div>
-
-            <div class="detail-block">
+            <div class="detail-block" style="margin-top: 18px;">
               <div class="row">
                 <div>
                   <div class="chips" style="margin-bottom: 10px;">
@@ -1599,63 +1704,64 @@
                   <div class="title">${item.title}</div>
                   <p class="subtle">目标：${item.objective}</p>
                 </div>
-                <span class="chip ${statusClass(item.status)}">${statusLabel(item.status)}</span>
+                <span class="chip ${dueChipClass(item)}">${dueBadgeText(item)}</span>
               </div>
             </div>
 
-            <div class="detail-block">
+            <div class="detail-block" style="margin-top: 18px;">
               <div class="chips">
                 <span class="chip">主负责人 ${findUser(item.ownerId).name}</span>
                 ${item.collaborators.map((userId) => `<span class="chip">协作 ${findUser(userId).name}</span>`).join("")}
-                <span class="chip ${dueChipClass(item)}">${dueBadgeText(item)}</span>
+                <span class="chip">${item.code || item.id}</span>
                 <span class="chip">当前进度 ${item.progress}%</span>
+                <span class="chip ${dueChipClass(item)}">${dueBadgeText(item)}</span>
               </div>
             </div>
 
-            <div class="detail-block">
-              <div class="title">完成标准</div>
-              <p class="subtle">${item.acceptance}</p>
+            <div class="detail-block" style="margin-top: 18px;">
+              <div class="title">当前进展与下一步</div>
+              <p class="subtle" style="margin-bottom: 10px;">当前进展：${item.current}</p>
+              <p class="subtle" style="margin-bottom: 0;">下一步：${item.nextStep}</p>
             </div>
 
-            ${item.githubLinks && item.githubLinks.length ? `
-              <div class="detail-block">
-                <div class="title">GitHub 关联</div>
-                <div class="chips" style="margin-top: 12px;">
-                  ${item.githubLinks.map((link) => `<a class="chip" href="${link}" target="_blank" rel="noreferrer">${link.replace(/^https?:\/\//, "")}</a>`).join("")}
-                </div>
-              </div>
-            ` : ""}
-
-            <div class="detail-block">
-              <div class="title">当前进展</div>
-              <p class="subtle">${item.current}</p>
-            </div>
-
-            <div class="detail-block">
-              <div class="title">下一步</div>
-              <p class="subtle">${item.nextStep}</p>
-            </div>
-
-            <div class="detail-block">
+            <div class="detail-block" style="margin-top: 18px;">
               <div class="title">常用动作</div>
-              <div class="chips" style="margin-top: 12px;">
-                <button class="link-button chip" type="button" data-detail-status="in_progress">一句话更新</button>
-                <button class="link-button chip ${statusClass("blocked")}" type="button" data-detail-status="blocked">改成阻塞</button>
-                <button class="link-button chip" type="button" data-detail-status="review">送评审</button>
-                <button class="link-button chip done" type="button" data-detail-status="done">标记完成</button>
+              <div class="action-buttons">
+                <button class="btn btn-primary action-btn" type="button" data-detail-status="in_progress">一句话更新</button>
+                <button class="btn action-btn action-btn-danger" type="button" data-detail-status="blocked">改成阻塞</button>
+                <button class="btn action-btn action-btn-warning" type="button" data-detail-status="review">送评审</button>
+                <button class="btn action-btn action-btn-done" type="button" data-detail-status="done">标记完成</button>
+                <button class="btn btn-soft action-btn" type="button" data-edit-item="${item.id}">编辑事项</button>
+                ${item.status !== "done" ? `<button class="btn action-btn action-btn-done" type="button" data-complete-item="${item.id}">整体完成关闭</button>` : ""}
               </div>
             </div>
-          </article>
 
-          <article class="panel">
-            <h3 class="section-title">事件时间线</h3>
-            <p class="section-copy">无登录版本仍然要可信，靠的是每次操作都保留上下文。</p>
-            <div class="timeline">
-              ${item.events.slice().sort((left, right) => new Date(right.time) - new Date(left.time)).map((event) => renderDetailEvent(event, item)).join("")}
-            </div>
-            <div class="action-row" style="margin-top: 16px;">
-              <button class="btn btn-primary" type="button" data-detail-status="in_progress">保存一句话更新</button>
-              <button class="btn btn-soft" type="button" data-detail-status="review">只改状态</button>
+            <details class="advanced-box" style="margin-top: 18px;">
+              <summary>查看更多事项信息</summary>
+              <div class="stack" style="margin-top: 12px;">
+                <div class="detail-block">
+                  <div class="title">完成标准</div>
+                  <p class="subtle">${item.acceptance}</p>
+                </div>
+                ${item.githubLinks && item.githubLinks.length ? `
+                  <div class="detail-block">
+                    <div class="title">GitHub 关联</div>
+                    <div class="chips" style="margin-top: 12px;">
+                      ${item.githubLinks.map((link) => `<a class="chip" href="${link}" target="_blank" rel="noreferrer">${link.replace(/^https?:\/\//, "")}</a>`).join("")}
+                    </div>
+                  </div>
+                ` : ""}
+              </div>
+            </details>
+
+            <div class="detail-block" style="margin-top: 18px;">
+              <h3 class="section-title">事件时间线</h3>
+              <p class="section-copy">无登录版本仍然要可信，靠的是每次操作都保留上下文。</p>
+              <div class="timeline">
+                ${item.events.length
+                  ? item.events.slice().sort((left, right) => new Date(right.time) - new Date(left.time)).map((event) => renderDetailEvent(event, item)).join("")
+                  : emptyState("这条事项还没有留下时间线。")}
+              </div>
             </div>
           </article>
         </div>
@@ -1681,9 +1787,19 @@
       const item = findItem(quickItemSelect.value);
       const note = quickNoteInput.value.trim();
 
+      if (!actorId || !item) {
+        showToast("请先保留可用成员，并选择一个事项。");
+        return;
+      }
+
       if (!note) {
         showToast("先写一句话进展，再保存。");
         quickNoteInput.focus();
+        return;
+      }
+
+      if (!canActorActOnItem(item, actorId)) {
+        showToast("只有事项参与人员才能更新这条事项。");
         return;
       }
 
@@ -1709,8 +1825,132 @@
       }
     }
 
+    function openItemEditModal(itemId) {
+      const item = findItem(itemId);
+      if (!item) {
+        showToast("事项不存在。");
+        return;
+      }
+
+      const users = activeUsers();
+      if (!users.length) {
+        showToast("请先保留至少一位可用成员，再编辑事项。");
+        return;
+      }
+      const actorId = actorSelect.value || localStorage.getItem(ACTOR_KEY) || "";
+      if (!canActorActOnItem(item, actorId)) {
+        showToast("先切到该事项的参与成员，再编辑事项。");
+        return;
+      }
+      const ownerId = users.some((user) => user.id === item.ownerId) ? item.ownerId : (users[0]?.id || item.ownerId);
+      const due = splitDueAtForForm(item.dueAt || defaultDueAt());
+
+      modal.innerHTML = `
+        <div class="modal">
+          <div class="stack">
+            <div>
+              <h3 class="section-title">编辑事项</h3>
+              <p class="section-copy">这里改的是事项本身的基础信息，不影响左侧的一句话快速更新。</p>
+            </div>
+            <div class="stack">
+              <label class="subtle" for="edit-title">事项标题</label>
+              <input id="edit-title" type="text" value="${escapeHtml(item.title)}" placeholder="例如：补成员看板空状态">
+            </div>
+            <div class="field-grid">
+              <div class="stack">
+                <label class="subtle" for="edit-owner">主负责人</label>
+                <select id="edit-owner">${users.map((user) => `<option value="${user.id}" ${user.id === ownerId ? "selected" : ""}>${user.name}</option>`).join("")}</select>
+              </div>
+              <div class="stack">
+                <label class="subtle" for="edit-due-date">目标时间</label>
+                <div class="field-grid">
+                  <input id="edit-due-date" type="date" value="${due.date}">
+                  <input id="edit-due-time" type="time" value="${due.time}">
+                </div>
+              </div>
+            </div>
+            <div class="field-grid">
+              <div class="stack">
+                <label class="subtle" for="edit-kind">事项类型</label>
+                <select id="edit-kind">
+                  <option value="personal" ${item.kind === "personal" ? "selected" : ""}>个人事项</option>
+                  <option value="collab" ${item.kind === "collab" ? "selected" : ""}>多人协作事项</option>
+                </select>
+              </div>
+              <div class="stack">
+                <label class="subtle" for="edit-objective">一句话目标</label>
+                <input id="edit-objective" type="text" value="${escapeHtml(item.objective)}" placeholder="例如：先把详情时间线和空状态补齐">
+              </div>
+            </div>
+            <div id="edit-collab-panel" class="stack collab-panel ${item.kind === "collab" ? "" : "is-hidden"}" ${item.kind === "collab" ? "" : "hidden"}>
+              <span class="subtle">协作成员</span>
+              <div class="chips">
+                ${users.map((user) => `
+                  <label class="chip">
+                    <input
+                      type="checkbox"
+                      name="edit-collaborator"
+                      value="${user.id}"
+                      data-owner-lock="${user.id === ownerId ? "true" : "false"}"
+                      ${item.collaborators.includes(user.id) ? "checked" : ""}
+                      ${user.id === ownerId ? "disabled" : ""}
+                    >
+                    ${user.name}
+                  </label>
+                `).join("")}
+              </div>
+            </div>
+            <div class="stack">
+              <label class="subtle" for="edit-current">当前进展</label>
+              <textarea id="edit-current" placeholder="例如：时间线样式已完成，剩余边界态补充。">${escapeHtml(item.current || "")}</textarea>
+            </div>
+            <div class="stack">
+              <label class="subtle" for="edit-next-step">下一步</label>
+              <textarea id="edit-next-step" placeholder="例如：补并发提示和空状态文案。">${escapeHtml(item.nextStep || "")}</textarea>
+            </div>
+            <details class="advanced-box" open>
+              <summary>补充细节</summary>
+              <div class="stack" style="margin-top: 12px;">
+                <div class="stack">
+                  <label class="subtle" for="edit-acceptance">完成标准</label>
+                  <textarea id="edit-acceptance" placeholder="例如：时间线覆盖创建 / 更新 / 完成。">${escapeHtml(item.acceptance || "")}</textarea>
+                </div>
+                <div class="stack">
+                  <label class="subtle" for="edit-github">GitHub 关联</label>
+                  <input id="edit-github" type="text" value="${escapeHtml((item.githubLinks || [])[0] || "")}" placeholder="例如：https://github.com/org/repo/issues/12">
+                </div>
+                <div class="stack">
+                  <label class="subtle" for="edit-summary">完成总结</label>
+                  <textarea id="edit-summary" placeholder="完成后再补也可以。">${escapeHtml(item.summary || "")}</textarea>
+                </div>
+              </div>
+            </details>
+            <div class="modal-actions">
+              <button id="edit-submit" class="btn btn-primary" type="button">保存事项</button>
+              <button id="edit-cancel" class="btn btn-soft" type="button">取消</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      modal.classList.add("active");
+      modal.querySelector("#edit-title").focus();
+      modal.querySelector("#edit-cancel").addEventListener("click", closeCreateModal);
+      modal.querySelector("#edit-submit").addEventListener("click", () => handleSaveItemEdit(itemId), { once: true });
+      modal.querySelector("#edit-kind").addEventListener("change", toggleEditCollaborators);
+      modal.querySelector("#edit-owner").addEventListener("change", syncEditOwnerState);
+      modal.addEventListener("click", closeOnBackdrop);
+      syncEditOwnerState();
+      toggleEditCollaborators();
+    }
+
     function openCreateModal() {
-      const defaultActor = actorSelect.value || state.users[0].id;
+      const users = activeUsers();
+      if (!users.length) {
+        showToast("请先新增成员，再创建事项。");
+        return;
+      }
+      const defaultActor = resolveActorId(actorSelect.value || state.users[0]?.id || "");
       const defaultDue = defaultCreateDue();
       const duePresets = [
         { label: "今天下班前", dueAt: buildPresetDueAt(0, 18, 0) },
@@ -1736,7 +1976,7 @@
             <div class="field-grid">
               <div class="stack">
                 <label class="subtle" for="new-owner">主负责人</label>
-                <select id="new-owner">${state.users.map((user) => `<option value="${user.id}" ${user.id === defaultActor ? "selected" : ""}>${user.name}</option>`).join("")}</select>
+                <select id="new-owner">${users.map((user) => `<option value="${user.id}" ${user.id === defaultActor ? "selected" : ""}>${user.name}</option>`).join("")}</select>
               </div>
               <div class="stack">
                 <label class="subtle" for="new-due-date">目标时间</label>
@@ -1772,7 +2012,7 @@
             <div id="collab-panel" class="stack collab-panel is-hidden" hidden>
               <span class="subtle">协作成员</span>
               <div class="chips">
-                ${state.users.map((user) => `<label class="chip"><input type="checkbox" name="new-collaborator" value="${user.id}" data-owner-lock="${user.id === defaultActor ? "true" : "false"}"${user.id === defaultActor ? " disabled" : ""}>${user.name}</label>`).join("")}
+                ${users.map((user) => `<label class="chip"><input type="checkbox" name="new-collaborator" value="${user.id}" data-owner-lock="${user.id === defaultActor ? "true" : "false"}"${user.id === defaultActor ? " disabled" : ""}>${user.name}</label>`).join("")}
               </div>
             </div>
             <details class="advanced-box">
@@ -1941,6 +2181,34 @@
       return findItem(storedId) || state.items[0];
     }
 
+    function activeUsers() {
+      return state.users.filter((user) => user.active !== false);
+    }
+
+    function itemParticipantIds(item) {
+      if (!item) {
+        return [];
+      }
+      return [...new Set([item.ownerId, ...(item.collaborators || [])].filter(Boolean))];
+    }
+
+    function participantUsers(item) {
+      const participantIdSet = new Set(itemParticipantIds(item));
+      return activeUsers().filter((user) => participantIdSet.has(user.id));
+    }
+
+    function canActorActOnItem(item, actorId) {
+      return Boolean(item && actorId && itemParticipantIds(item).includes(actorId));
+    }
+
+    function resolveActorId(preferredId, item = null) {
+      const users = item ? participantUsers(item) : activeUsers();
+      if (!users.length) {
+        return "";
+      }
+      return users.some((user) => user.id === preferredId) ? preferredId : users[0].id;
+    }
+
     function findUser(userId) {
       return state.users.find((user) => user.id === userId) || state.users[0];
     }
@@ -2066,7 +2334,8 @@
 
     function renderMemberAdminRow(user) {
       const activeCount = state.items.filter((item) => item.ownerId === user.id && item.status !== "done").length;
-      const relatedCount = state.items.filter((item) => item.ownerId === user.id || item.collaborators.includes(user.id)).length;
+      const activeRelatedCount = state.items.filter((item) => item.status !== "done" && (item.ownerId === user.id || item.collaborators.includes(user.id))).length;
+      const historyCount = state.items.filter((item) => item.ownerId === user.id || item.collaborators.includes(user.id)).length;
       return `
         <div class="list-item">
           <div class="row">
@@ -2081,8 +2350,35 @@
           </div>
           <div class="chips">
             <span class="chip">负责中 ${activeCount}</span>
-            <span class="chip">${relatedCount ? `关联事项 ${relatedCount}` : "可直接删除"}</span>
+            <span class="chip">${activeRelatedCount ? `进行中关联 ${activeRelatedCount}` : "可直接删除"}</span>
+            <span class="chip">历史关联 ${historyCount}</span>
             <span class="chip">标识 ${user.avatar}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderActiveDetailRow(item, currentItemId) {
+      const isCurrent = item.id === currentItemId;
+      return `
+        <div class="detail-item-card click-card ${isCurrent ? "current" : ""}" data-open-item="${item.id}">
+          <div>
+            <div class="chips" style="margin-bottom: 8px;">
+              <span class="chip">${item.code || item.id}</span>
+              ${isCurrent ? `<span class="chip">当前查看</span>` : ""}
+            </div>
+            <div class="title">${item.title}</div>
+          </div>
+          <div class="chips">
+            <span class="chip">${itemKindLabel(item)}</span>
+            <span class="chip ${statusClass(item.status)}">${statusLabel(item.status)}</span>
+            <span class="chip ${dueChipClass(item)}">${formatDueLabel(item)}</span>
+          </div>
+          <p class="subtle">主负责人：${findUser(item.ownerId).name}</p>
+          <p class="subtle">${item.current}</p>
+          <div class="chips">
+            <span class="chip">${isCurrent ? "当前展示中" : "点击切换到这条"}</span>
+            <button class="link-button chip done" type="button" data-complete-item="${item.id}">整体完成</button>
           </div>
         </div>
       `;
@@ -2194,16 +2490,162 @@
       }
 
       try {
-        await apiRequest(`/users/${userId}/delete`, { method: "POST" });
-        state.users = state.users.filter((entry) => entry.id !== userId);
+        const result = await apiRequest(`/users/${userId}/delete`, { method: "POST" });
+        state.users = state.users.map((entry) => entry.id === userId ? result.user : entry);
 
-        if (localStorage.getItem(ACTOR_KEY) === userId && state.users[0]) {
-          localStorage.setItem(ACTOR_KEY, state.users[0].id);
+        const nextActorId = resolveActorId(localStorage.getItem(ACTOR_KEY));
+        if (nextActorId) {
+          localStorage.setItem(ACTOR_KEY, nextActorId);
         }
 
         renderAll();
         showView("member-admin");
         showToast("成员已删除。");
+      } catch (error) {
+        showToast(error.message);
+      }
+    }
+
+    async function handleCompleteItem(itemId) {
+      const item = findItem(itemId);
+      const actorId = actorSelect.value || localStorage.getItem(ACTOR_KEY) || "";
+
+      if (!item) {
+        showToast("事项不存在。");
+        return;
+      }
+
+      if (!actorId) {
+        showToast("请先保留至少一位可用成员，再做状态更新。");
+        return;
+      }
+
+      if (!canActorActOnItem(item, actorId)) {
+        showToast("只有事项参与人员才能完成这条事项。");
+        return;
+      }
+
+      try {
+        const updatedItem = await apiRequest(`/items/${item.id}/quick-update`, {
+          method: "PATCH",
+          body: {
+            actorId,
+            status: "done",
+            note: "已整体完成关闭。"
+          }
+        });
+
+        replaceItem(updatedItem);
+        localStorage.setItem(ACTOR_KEY, actorId);
+        localStorage.setItem(DETAIL_KEY, item.id);
+        renderAll();
+        showView("detail");
+        showToast(`已将“${item.title}”标记为完成。`);
+      } catch (error) {
+        showToast(error.message);
+      }
+    }
+
+    function syncEditOwnerState() {
+      const ownerId = modal.querySelector("#edit-owner")?.value;
+
+      modal.querySelectorAll('input[name="edit-collaborator"]').forEach((input) => {
+        const isOwner = input.value === ownerId;
+        input.dataset.ownerLock = isOwner ? "true" : "false";
+        input.disabled = isOwner || modal.querySelector("#edit-kind")?.value !== "collab";
+
+        if (isOwner) {
+          input.checked = false;
+        }
+      });
+    }
+
+    function toggleEditCollaborators() {
+      const isCollab = modal.querySelector("#edit-kind")?.value === "collab";
+      const collabPanel = modal.querySelector("#edit-collab-panel");
+
+      if (!collabPanel) {
+        return;
+      }
+
+      collabPanel.hidden = !isCollab;
+      collabPanel.classList.toggle("is-hidden", !isCollab);
+
+      modal.querySelectorAll('input[name="edit-collaborator"]').forEach((input) => {
+        const ownerLocked = input.dataset.ownerLock === "true";
+        input.disabled = !isCollab || ownerLocked;
+
+        if (!isCollab) {
+          input.checked = false;
+        }
+      });
+    }
+
+    async function handleSaveItemEdit(itemId) {
+      const item = findItem(itemId);
+      if (!item) {
+        showToast("事项不存在。");
+        return;
+      }
+
+      const actorId = actorSelect.value || localStorage.getItem(ACTOR_KEY) || "";
+      const ownerId = modal.querySelector("#edit-owner").value;
+      const title = modal.querySelector("#edit-title").value.trim();
+      const dueAt = buildDueAtFromForm(
+        modal.querySelector("#edit-due-date").value,
+        modal.querySelector("#edit-due-time").value
+      );
+      const kind = modal.querySelector("#edit-kind").value;
+      const objective = modal.querySelector("#edit-objective").value.trim();
+      const current = modal.querySelector("#edit-current").value.trim();
+      const nextStep = modal.querySelector("#edit-next-step").value.trim();
+      const acceptance = modal.querySelector("#edit-acceptance").value.trim();
+      const githubLink = modal.querySelector("#edit-github").value.trim();
+      const summary = modal.querySelector("#edit-summary").value.trim();
+      const collaborators = kind === "collab"
+        ? Array.from(modal.querySelectorAll('input[name="edit-collaborator"]:checked')).map((input) => input.value)
+        : [];
+
+      if (!actorId) {
+        showToast("请先保留至少一位可用成员，再编辑事项。");
+        return;
+      }
+
+      if (!canActorActOnItem(item, actorId)) {
+        showToast("只有事项参与人员才能编辑这条事项。");
+        return;
+      }
+
+      if (!title || !objective || !current || !nextStep || !acceptance || !dueAt) {
+        showToast("标题、时间、目标、当前进展、下一步和完成标准都要补齐。");
+        return;
+      }
+
+      try {
+        const updatedItem = await apiRequest(`/items/${itemId}`, {
+          method: "PATCH",
+          body: {
+            actorId,
+            title,
+            ownerId,
+            kind,
+            dueAt,
+            objective,
+            current,
+            nextStep,
+            acceptance,
+            summary,
+            githubLinks: githubLink ? [githubLink] : [],
+            collaborators
+          }
+        });
+
+        replaceItem(updatedItem);
+        localStorage.setItem(DETAIL_KEY, updatedItem.id);
+        closeCreateModal();
+        renderAll();
+        showView("detail");
+        showToast("事项详情已更新。");
       } catch (error) {
         showToast(error.message);
       }
@@ -2441,6 +2883,14 @@
 
     function pad2(value) {
       return String(value).padStart(2, "0");
+    }
+
+    function escapeHtml(text) {
+      return String(text || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
     }
 
     function formatTime(value) {
