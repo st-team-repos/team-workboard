@@ -2290,12 +2290,15 @@
     }
 
     function renderMemberCard(user) {
-      const owned = state.items.filter((item) => item.ownerId === user.id && item.status !== "done");
-      const topItem = owned.sort(sortByDueThenUpdate)[0];
-      const collaborationCount = state.items.filter((item) => item.collaborators.includes(user.id) && item.status !== "done").length;
+      const relatedActiveItems = state.items
+        .filter((item) => item.status !== "done" && (item.ownerId === user.id || item.collaborators.includes(user.id)))
+        .sort(sortByDueThenUpdate);
+      const topItem = relatedActiveItems[0];
+      const ownedCount = relatedActiveItems.filter((item) => item.ownerId === user.id).length;
+      const collaborationCount = relatedActiveItems.filter((item) => item.collaborators.includes(user.id)).length;
       const badge = topItem && topItem.status === "blocked"
         ? `<span class="chip blocked">1 项阻塞</span>`
-        : `<span class="chip">${owned.length} 项进行中</span>`;
+        : `<span class="chip">${relatedActiveItems.length} 项进行中</span>`;
 
       return `
         <div class="member-card click-card" data-open-item="${topItem ? topItem.id : ""}">
@@ -2314,6 +2317,7 @@
               <div class="chips" style="margin-bottom: 8px;">
                 <span class="chip">${topItem.code || topItem.id}</span>
                 <span class="chip">${itemKindLabel(topItem)}</span>
+                <span class="chip">${topItem.ownerId === user.id ? "主负责" : "协作中"}</span>
               </div>
               <div class="title">${topItem.title}</div>
               <p class="subtle">目标时间：${formatDueLabel(topItem)}</p>
@@ -2322,11 +2326,11 @@
             <div class="member-tags">
               <span class="chip ${dueChipClass(topItem)}">${dueBadgeText(topItem)}</span>
               <span class="chip">进展 ${topItem.progress}%</span>
-              <span class="chip">${topItem.nextStep}</span>
+              <span class="chip">主负责事项 ${ownedCount}</span>
               <span class="chip">协作中事项 ${collaborationCount}</span>
             </div>
           ` : `
-            <div class="empty-state">当前没有该成员负责的活跃事项。</div>
+            <div class="empty-state">当前没有该成员关联的活跃事项。</div>
           `}
         </div>
       `;
